@@ -244,6 +244,6 @@ def get_user_name_for_registration(message):
         reply_markup=get_main_menu_keyboard()
     )
 if __name__ == '__main__':
-    bot.polling(none_stop=True)ы
+    bot.polling(none_stop=True)
 
 
