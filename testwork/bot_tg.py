@@ -666,11 +666,7 @@ def get_goals_keyboard():
 def get_news_keyboard():
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(
-        types.InlineKeyboardButton('Экономика 🎓', callback_data='news_economic'),
-        types.InlineKeyboardButton('Спорт 💪', callback_data='news_vedomosti'),
-        types.InlineKeyboardButton('Природа 🌳', callback_data='news_rbc'),
-        types.InlineKeyboardButton('Киберспорт 🧑‍💻', callback_data='news_bbc'),
-        types.InlineKeyboardButton('Технологии 💻', callback_data='news_tehnologies'),
+        types.InlineKeyboardButton('🌍 Мировые новости', callback_data='news_world'),
         types.InlineKeyboardButton('🔙 Назад', callback_data='menu')
         )
     return markup
@@ -866,7 +862,7 @@ def handle_news_reply(message):
 
 def get_latest_post_by_source(source):
     try:
-        conn = sqlite3.connect('/root/SanderBot/testwork/news.db')
+        conn = sqlite3.connect('/root/SanderBot/news.db')
         cur = conn.cursor()
         cur.execute("SELECT title, link, summary, published FROM news WHERE source=? ORDER BY id DESC LIMIT 1", (source,))
         post = cur.fetchone()
@@ -929,51 +925,12 @@ def callback_message(callback):
         bot.register_next_step_handler(callback.message, process_fund_choice)
         bot.answer_callback_query(callback.id)
 
-    elif callback.data == 'news_economic':
-        post = get_latest_post_by_source('russianmacro')
-        if post:
-            title, link, summary, published = post
-            text = f"🎓 *Экономика*\n\n*{title}*\n{summary[:200]}...\n\n[Читать]({link})"
-        else:
-            text = "😴 Новостей пока нет."
-        bot.send_message(callback.message.chat.id, text, parse_mode='Markdown')
-        bot.answer_callback_query(callback.id)
-
-    elif callback.data == 'news_vedomosti':
-        post = get_latest_post_by_source('sport_channel')
-        if post:
-            title, link, summary, published = post
-            text = f"💪 *Спорт*\n\n*{title}*\n{summary[:200]}...\n\n[Читать]({link})"
-        else:
-            text = "😴 Новостей пока нет."
-        bot.send_message(callback.message.chat.id, text, parse_mode='Markdown')
-        bot.answer_callback_query(callback.id)
-    
-    elif callback.data == 'news_nature':
-        post = get_latest_post_by_source('ecoworldnews')    
-        if post:
-            title, link, summary, published = post
-            text = f"🌳 *Природа*\n\n*{title}*\n{summary[:200]}...\n\n[Читать]({link})"
-        else:
-            text = "😴 Новостей пока нет."
-        bot.send_message(callback.message.chat.id, text, parse_mode='Markdown')
-        bot.answer_callback_query(callback.id)
-
-    elif callback.data == 'news_esport':
-        post = get_latest_post_by_source('@taverngg')    
-        if post:
-            title, link, summary, published = post
-            text = f"🧑‍💻 *Киберспорт*\n\n*{title}*\n{summary[:200]}...\n\n[Читать]({link})"
-        else:
-            text = "😴 Новостей пока нет."
-        bot.send_message(callback.message.chat.id, text, parse_mode='Markdown')
-        bot.answer_callback_query(callback.id)
-    
-    elif callback.data == 'news_tech':
-        post = get_latest_post_by_source('@yandex_tech')
-        if post:
-            title, link, summary, published = post
-            text = f"🧑‍💻 *Технологии*\n\n*{title}*\n{summary[:200]}...\n\n[Читать]({link})"
+    elif callback.data == 'news_world':
+        news_list = get_news_from_db(1)
+        if news_list:
+            text = "🌍 *Мировые новости:*\n\n"
+            for title, link in news_list:
+                ext += f"• [{title}]({link})\n"
         else:
             text = "😴 Новостей пока нет."
         bot.send_message(callback.message.chat.id, text, parse_mode='Markdown')
