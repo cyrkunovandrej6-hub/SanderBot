@@ -423,16 +423,6 @@ create_fixed_expenses_table()
 create_users_table()
 create_expenses_table()
 # ========== ФУНКЦИИ ДЛЯ БОТА ==========
-def get_news_from_db(limit=5, source=None):
-    conn = sqlite3.connect(r'C:\Users\cyrku\Desktop\SanderNewsBot\news.db')
-    cur = conn.cursor()
-    if source:
-        cur.execute("SELECT title, link FROM news WHERE source=? ORDER BY id DESC LIMIT ?", (source, limit))
-    else:
-        cur.execute("SELECT title, link FROM news ORDER BY id DESC LIMIT ?", (limit,))
-    news = cur.fetchall()
-    conn.close()
-    return news
 
 def process_delete_goal_choice(message):
     try:
@@ -663,13 +653,6 @@ def get_goals_keyboard():
         types.InlineKeyboardButton('🔙 Назад', callback_data='menu')
     )
     return markup
-def get_news_keyboard():
-    markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(
-        types.InlineKeyboardButton('🌍 Мировые новости', callback_data='news_world'),
-        types.InlineKeyboardButton('🔙 Назад', callback_data='menu')
-        )
-    return markup
 
 def get_fixed_expenses_keyboard():
     markup = types.InlineKeyboardMarkup(row_width=2)
@@ -856,21 +839,6 @@ def start(message):
 
 
 # ========== ОБРАБОТЧИКИ REPLY-КНОПОК ==========
-@bot.message_handler(func=lambda message: message.text == '👁 Новости')
-def handle_news_reply(message):
-    bot.send_message(message.chat.id, "📰 *В какой сфере вы хотели бы узнать новость?* 🤔",parse_mode='Markdown', reply_markup=get_news_keyboard())
-
-def get_latest_post_by_source(source):
-    try:
-        conn = sqlite3.connect('/root/SanderBot/news.db')
-        cur = conn.cursor()
-        cur.execute("SELECT title, link, summary, published FROM news WHERE source=? ORDER BY id DESC LIMIT 1", (source,))
-        post = cur.fetchone()
-        conn.close()
-        return post
-    except Exception as e:
-        print(f"Ошибка при получении новости: {e}")
-        return None
 
 @bot.message_handler(func=lambda message: message.text == '💼 Постоянные доходы')
 def handle_fixed_income(message):
@@ -924,27 +892,6 @@ def callback_message(callback):
         user_temp_data[user_id] = {'fund_goals': goals}
         bot.register_next_step_handler(callback.message, process_fund_choice)
         bot.answer_callback_query(callback.id)
-
-    elif callback.data == 'news_world':
-        news_list = get_news_from_db(1)
-        if news_list:
-            text = "🌍 *Мировые новости:*\n\n"
-            for title, link in news_list:
-                ext += f"• [{title}]({link})\n"
-        else:
-            text = "😴 Новостей пока нет."
-        bot.send_message(callback.message.chat.id, text, parse_mode='Markdown')
-        bot.answer_callback_query(callback.id)
-
-    elif callback.data == 'news':
-        news = get_news_from_db(5)
-        if not news:
-            text = "📰 Новости пока не загружены. Попробуй позже."
-        else:
-            text = "📰 *Последние новости:*\n\n"
-            for title, link in news:
-                text += f"• [{title}]({link})\n"
-        bot.send_message(callback.message.chat.id, text, parse_mode='Markdown', reply_markup=get_news_keyboard())
 
     elif callback.data == 'delete_goal':
         user_id = callback.from_user.id
