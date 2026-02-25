@@ -1,3 +1,4 @@
+
 import feedparser
 import sqlite3
 from datetime import datetime
@@ -6,9 +7,11 @@ import time
 
 # ========== НАСТРОЙКИ ==========
 RSS_FEEDS = {
-    'forbes': 'https://www.forbes.ru/rss',
-    'vedomosti': 'https://www.vedomosti.ru/rss',
-    'rbc': 'https://static.rbc.ru/rss'
+    'economic': 'https://rsshub.app/telegram/channel/russianmacro',
+    'sport': 'https://rsshub.app/telegram/channel/championat',
+    'nature': 'https://rsshub.app/telegram/channel/ecoworldnews',
+    'esport': 'https://rsshub.app/telegram/channel/taverngg',
+    'tech': 'https://rsshub.app/telegram/channel/yandex_tech'
 }
 DB_PATH = 'news.db'
 # ========== СОЗДАНИЕ БАЗЫ ==========
@@ -69,6 +72,7 @@ if __name__ == '__main__':
         scheduler.start()
     except KeyboardInterrupt:
         print("\n🛑 Остановлено")
+
 
 
 
