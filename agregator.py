@@ -7,11 +7,9 @@ import time
 
 # ========== НАСТРОЙКИ ==========
 RSS_FEEDS = {
-    'economic': 'https://rsshub.app/telegram/channel/russianmacro',
-    'sport': 'https://rsshub.app/telegram/channel/championat',
-    'nature': 'https://rsshub.app/telegram/channel/ecoworldnews',
-    'esport': 'https://rsshub.app/telegram/channel/taverngg',
-    'tech': 'https://rsshub.app/telegram/channel/yandex_tech'
+    'bbc_world': 'http://feeds.bbci.co.uk/news/world/rss.xml',
+    'cnn_world': 'http://rss.cnn.com/rss/edition_world.rss',
+    'reuters_world': 'https://feeds.reuters.com/reuters/worldnews'
 }
 DB_PATH = 'news.db'
 # ========== СОЗДАНИЕ БАЗЫ ==========
