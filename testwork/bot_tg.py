@@ -4,7 +4,8 @@ import sqlite3
 from datetime import datetime, timedelta
 
 bot = telebot.TeleBot('8526938179:AAHKiBZba2oy3cIcW8eigJL8WAfMypV75YI')
-
+# ==========ХРАНИЛИЩЕ ВРЕМЕННЫХ ДАННЫХ ==========
+user_temp_data = {}
 #=========== КНОПКА "ТРАТЫ" ==================
 class Expense:
     @classmethod
@@ -260,13 +261,13 @@ class Expense:
 def process_custom_category(message):
         category = message.text.strip()
         user_id = message.from_user.id
-        expense = bot.user_data.get(user_id)
+        expense = user_temp_data.get(user_id)
         if expense:
             expense.category = category
             expense.save_to_db()
             bot.send_message(message.chat.id, expense.format_message())
             bot.send_message(message.chat.id, "💰 Управление тратами", reply_markup=get_expenses_keyboard())
-            del bot.user_data[user_id]
+            del user_temp_data[user_id]
         else:
             bot.send_message(message.chat.id, "❌ Что-то пошло не так. Попробуй сначала.")
 @bot.message_handler(commands=['add_expense'])
@@ -281,8 +282,8 @@ def process_expense_amount(message):
             bot.send_message(message.chat.id, 'Сумма должна быть больше 0!')
             return
         expense = Expense(user_id=message.from_user.id, amount = amount)
-        bot.user_data = getattr(bot, 'user_data',{})
-        bot.user_data[message.from_user.id] = expense
+        global user_temp_data
+        user_temp_data[message.from_user.id] = expense
         markup = types.InlineKeyboardMarkup(row_width=2)
         categories = ['🍔 Еда', '🚇 Транспорт', '🛍️ Покупки', '🎮 Развлечения', '🏠 Дом', '💊 Здоровье']
         for cat in categories:
@@ -302,14 +303,15 @@ def handle_custom_category(call):
 def process_category(call):
     category = call.data.replace('cat_','')
     user_id = call.from_user.id
-    expense = bot.user_data.get(user_id)
+    global user_temp_data
+    expense = user_temp_data.get(user_id)
     if expense:
         expense.category = category
         expense.save_to_db()
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton('🔙 Назад к тратам', callback_data='balance'))
         bot.send_message(call.message.chat.id,expense.format_message())
-        del bot.user_data[user_id]
+        del user_temp_data[user_id]
         bot.answer_callback_query(call.id, "✅ Трата добавлена!")
     else:
         bot.answer_callback_query(call.id, "❌ Ошибка! Попробуй сначала")
@@ -436,7 +438,7 @@ def process_delete_goal_choice(message):
     try:
         num = int(message.text)
         user_id = message.from_user.id
-        goals = bot.user_data[user_id]['delete_goals']
+        goals = user_temp_data[user_id]['delete_goals']
         if 1 <= num <= len(goals):
             goal = goals[num-1]
             goal_id, goal_name = goal[0], goal[1]
@@ -448,18 +450,18 @@ def process_delete_goal_choice(message):
     except ValueError:
         bot.send_message(message.chat.id, "❌ Введи число!")
     finally:
-        if user_id in bot.user_data and 'delete_goals' in bot.user_data[user_id]:
-            del bot.user_data[user_id]['delete_goals']
+        if user_id in user_temp_data and 'delete_goals' in user_temp_data[user_id]:
+            del user_temp_data[user_id]['delete_goals']
 
 def process_fund_choice(message):
     try:
         num = int(message.text)
         user_id = message.from_user.id
-        goals = bot.user_data[user_id]['fund_goals']
+        goals = user_temp_data[user_id]['fund_goals']
         if 1 <= num <= len(goals):
             goal = goals[num-1]
-            bot.user_data[user_id]['fund_goal_id'] = goal[0]
-            bot.user_data[user_id]['fund_goal_name'] = goal[1]
+            user_temp_data[user_id]['fund_goal_id'] = goal[0]
+            user_temp_data[user_id]['fund_goal_name'] = goal[1]
             msg = bot.send_message(message.chat.id, f"🎯 Цель: {goal[1]}\n" f"💰 Накоплено: {goal[3]}₽ / {goal[2]}₽\n\n" f"Введи сумму пополнения:")
             bot.register_next_step_handler(msg, process_fund_amount)
         else:
@@ -474,8 +476,8 @@ def process_fund_amount(message):
             bot.send_message(message.chat.id, "❌ Сумма должна быть больше 0!")
             return
         user_id = message.from_user.id
-        goal_id = bot.user_data[user_id]['fund_goal_id']
-        goal_name = bot.user_data[user_id]['fund_goal_name']
+        goal_id = user_temp_data[user_id]['fund_goal_id']
+        goal_name = user_temp_data[user_id]['fund_goal_name']
         Expense.update_goal(goal_id, amount)
         goals = Expense.get_goals(user_id)
         for g in goals:
@@ -485,18 +487,18 @@ def process_fund_amount(message):
         bot.send_message(message.chat.id, f"✅ Готово!\n\n" f"• {goal_name}: {current}₽ / {target}₽\n" f"• Прогресс: {(current/target)*100:.1f}%")
         markup = get_goals_keyboard()
         bot.send_message(message.chat.id, "🎯 УПРАВЛЕНИЕ ЦЕЛЯМИ", reply_markup=markup)
-        del bot.user_data[user_id]['fund_goal_id']
-        del bot.user_data[user_id]['fund_goal_name']
+        del user_temp_data[user_id]['fund_goal_id']
+        del user_temp_data[user_id]['fund_goal_name']
     except ValueError:
         bot.send_message(message.chat.id, "❌ Введи число!")
 
 def process_goal_name(message):
     name = message.text.strip()
     user_id = message.from_user.id
-    bot.user_data = getattr(bot, 'user_data', {})
-    if user_id not in bot.user_data:
-        bot.user_data[user_id] = {}
-    bot.user_data[user_id]['goal_name'] = name
+    user_temp_data = getattr(bot, 'user_data', {})
+    if user_id not in user_temp_data:
+        user_temp_data[user_id] = {}
+    user_temp_data[user_id]['goal_name'] = name
     msg = bot.send_message(message.chat.id, f"🎯 Название: {name}\n\n" "Введи сумму, которую нужно накопить (только число):")
     bot.register_next_step_handler(msg, process_goal_target)
 def process_goal_target(message):
@@ -506,20 +508,20 @@ def process_goal_target(message):
             bot.send_message(message.chat.id, "❌ Сумма должна быть больше 0!")
             return
         user_id = message.from_user.id
-        name = bot.user_data[user_id]['goal_name']
+        name = user_temp_data[user_id]['goal_name']
         Expense.add_goal(user_id, name, target)
         bot.send_message(message.chat.id, f"✅ Цель добавлена!\n\n" f"• {name}: 0₽ / {target}₽")
         markup = get_goals_keyboard()
         bot.send_message(message.chat.id, "🎯 УПРАВЛЕНИЕ ЦЕЛЯМИ", reply_markup=markup)
-        del bot.user_data[user_id]['goal_name']
+        del user_temp_data[user_id]['goal_name']
     except ValueError:
         bot.send_message(message.chat.id, "❌ Введи число!")
 
 def process_income_custom_category(message):
     category = message.text.strip()
     user_id = message.from_user.id
-    name = bot.user_data[user_id]['income_name']
-    amount = bot.user_data[user_id]['income_amount']
+    name = user_temp_data[user_id]['income_name']
+    amount = user_temp_data[user_id]['income_amount']
     Expense.add_fixed_income(user_id, name, amount, category)
     bot.send_message(message.chat.id, f"✅ Постоянный доход добавлен!\n\n" f"• {name}: {amount}₽ ({category})")
     markup = get_fixed_income_keyboard()
@@ -536,7 +538,7 @@ def process_delete_income(message):
     try:
         num = int(message.text)
         user_id = message.from_user.id
-        incomes = bot.user_data[user_id]['income_delete_list']
+        incomes = user_temp_data[user_id]['income_delete_list']
         if 1 <= num <= len(incomes):
             income_id = incomes[num-1][0]
             markup = types.InlineKeyboardMarkup()
@@ -550,10 +552,10 @@ def process_delete_income(message):
 def process_income_name(message):
     name = message.text.strip()
     user_id = message.from_user.id
-    bot.user_data = getattr(bot, 'user_data', {})
-    if user_id not in bot.user_data:
-        bot.user_data[user_id] = {}
-    bot.user_data[user_id]['income_name'] = name
+    user_temp_data = getattr(bot, 'user_data', {})
+    if user_id not in user_temp_data:
+        user_temp_data[user_id] = {}
+    user_temp_data[user_id]['income_name'] = name
     msg = bot.send_message(message.chat.id, f"💰 Название: {name}\n\n" "Введи сумму дохода в месяц:")
     bot.register_next_step_handler(msg, process_income_amount)
 
@@ -564,24 +566,24 @@ def process_income_amount(message):
             bot.send_message(message.chat.id, "❌ Сумма должна быть больше 0!")
             return
         user_id = message.from_user.id
-        name = bot.user_data[user_id]['income_name']
+        name = user_temp_data[user_id]['income_name']
         markup = types.InlineKeyboardMarkup(row_width=2)
         categories = ['💼 Зарплата', '🏠 Аренда', '📈 Инвестиции', '💻 Фриланс', '🎁 Подарки', '💳 Проценты']
         for cat in categories:
             markup.add(types.InlineKeyboardButton(cat, callback_data=f'income_cat_{cat}'))
             markup.add(types.InlineKeyboardButton('✏️ Своя', callback_data='income_custom_category'))
             bot.send_message(message.chat.id, f"💰 {name}: {amount}₽\n\nВыбери категорию:", reply_markup=markup)
-            bot.user_data[user_id]['income_amount'] = amount
+            user_temp_data[user_id]['income_amount'] = amount
     except ValueError:
         bot.send_message(message.chat.id, "❌ Введи число!")
 
 def process_fixed_name(message):
     name = message.text.strip()
     user_id = message.from_user.id
-    bot.user_data = getattr(bot, 'user_data', {})
-    if user_id not in bot.user_data:
-        bot.user_data[user_id] = {}
-    bot.user_data[user_id]['fixed_name'] = name
+    user_temp_data = getattr(bot, 'user_data', {})
+    if user_id not in user_temp_data:
+        user_temp_data[user_id] = {}
+    user_temp_data[user_id]['fixed_name'] = name
     msg = bot.send_message(message.chat.id, f"💰 Название: {name}\n\n" "Введи сумму расхода в месяц:")
     bot.register_next_step_handler(msg, process_fixed_amount)
 
@@ -592,14 +594,14 @@ def process_fixed_amount(message):
             bot.send_message(message.chat.id, "❌ Сумма должна быть больше 0!")
             return
         user_id = message.from_user.id
-        name = bot.user_data[user_id]['fixed_name']
+        name = user_temp_data[user_id]['fixed_name']
         markup = types.InlineKeyboardMarkup(row_width=2)
         categories = ['🏠 Коммуналка', '💳 Кредиты', '📺 Подписки', '🚗 Транспорт', '🏥 Здоровье', '📚 Обучение']
         for cat in categories:
             markup.add(types.InlineKeyboardButton(cat, callback_data=f'fixed_cat_{cat}'))
             markup.add(types.InlineKeyboardButton('✏️ Своя', callback_data='fixed_custom_category'))
             bot.send_message(message.chat.id, f"💰 {name}: {amount}₽\n\nВыбери категорию:", reply_markup=markup)
-            bot.user_data[user_id]['fixed_amount'] = amount
+            user_temp_data[user_id]['fixed_amount'] = amount
     except ValueError:
         bot.send_message(message.chat.id, "❌ Введи число!")
 
@@ -664,9 +666,11 @@ def get_goals_keyboard():
 def get_news_keyboard():
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(
-        types.InlineKeyboardButton('📰 Forbes', callback_data='news_forbes'),
-        types.InlineKeyboardButton('📰 Ведомости', callback_data='news_vedomosti'),
-        types.InlineKeyboardButton('📰 РБК', callback_data='news_rbc'),
+        types.InlineKeyboardButton('Экономика 🎓', callback_data='news_economic'),
+        types.InlineKeyboardButton('Спорт 💪', callback_data='news_vedomosti'),
+        types.InlineKeyboardButton('Природа 🌳', callback_data='news_rbc'),
+        types.InlineKeyboardButton('Киберспорт 🧑‍💻', callback_data='news_bbc'),
+        types.InlineKeyboardButton('Технологии 💻', callback_data='news_tehnologies'),
         types.InlineKeyboardButton('🔙 Назад', callback_data='menu')
         )
     return markup
@@ -768,8 +772,8 @@ def confirm_delete_goal(call):
 def process_income_category(call):
     category = call.data.replace('income_cat_', '')
     user_id = call.from_user.id
-    name = bot.user_data[user_id]['income_name']
-    amount = bot.user_data[user_id]['income_amount']
+    name = user_temp_data[user_id]['income_name']
+    amount = user_temp_data[user_id]['income_amount']
     Expense.add_fixed_income(user_id, name, amount, category)
     bot.send_message(call.message.chat.id, f"✅ Постоянный доход добавлен!\n\n" f"• {name}: {amount}₽ ({category})")
     markup = get_fixed_income_keyboard()
@@ -814,8 +818,8 @@ def confirm_delete_fixed(call):
 def process_fixed_category(call):
     category = call.data.replace('fixed_cat_', '')
     user_id = call.from_user.id
-    name = bot.user_data[user_id]['fixed_name']
-    amount = bot.user_data[user_id]['fixed_amount']
+    name = user_temp_data[user_id]['fixed_name']
+    amount = user_temp_data[user_id]['fixed_amount']
     Expense.add_fixed_expense(user_id, name, amount, category)
     bot.send_message(
         call.message.chat.id,
@@ -834,8 +838,8 @@ def handle_fixed_custom_category(call):
 def process_fixed_custom_category(message):
     category = message.text.strip()
     user_id = message.from_user.id
-    name = bot.user_data[user_id]['fixed_name']
-    amount = bot.user_data[user_id]['fixed_amount']
+    name = user_temp_data[user_id]['fixed_name']
+    amount = user_temp_data[user_id]['fixed_amount']
     Expense.add_fixed_expense(user_id, name, amount, category)
     bot.send_message(message.chat.id, f"✅ Постоянный расход добавлен!\n\n" f"• {name}: {amount}₽ ({category})")
     markup = get_fixed_expenses_keyboard()
@@ -858,14 +862,19 @@ def start(message):
 # ========== ОБРАБОТЧИКИ REPLY-КНОПОК ==========
 @bot.message_handler(func=lambda message: message.text == '👁 Новости')
 def handle_news_reply(message):
-    news = get_news_from_db(5)
-    if not news:
-        text = "📰 Новости пока не загружены. Попробуй позже."
-    else:
-        text = "📰 *Последние новости:*\n\n"
-        for title, link in news:
-            text += f"• [{title}]({link})\n"
-    bot.send_message(message.chat.id, text, parse_mode='Markdown', reply_markup=get_news_keyboard())
+    bot.send_message(message.chat.id, "📰 *В какой сфере вы хотели бы узнать новость?* 🤔",parse_mode='Markdown', reply_markup=get_news_keyboard())
+
+def get_latest_post_by_source(source):
+    try:
+        conn = sqlite3.connect('/root/SanderBot/testwork/news.db')
+        cur = conn.cursor()
+        cur.execute("SELECT title, link, summary, published FROM news WHERE source=? ORDER BY id DESC LIMIT 1", (source,))
+        post = cur.fetchone()
+        conn.close()
+        return post
+    except Exception as e:
+        print(f"Ошибка при получении новости: {e}")
+        return None
 
 @bot.message_handler(func=lambda message: message.text == '💼 Постоянные доходы')
 def handle_fixed_income(message):
@@ -916,8 +925,58 @@ def callback_message(callback):
             msg += f"{i}. {name} — {current}₽ / {target}₽ ({percent:.1f}%)\n"
         msg += "\nНапиши номер цели:"
         bot.send_message(callback.message.chat.id, msg)
-        bot.user_data[user_id] = {'fund_goals': goals}
+        user_temp_data[user_id] = {'fund_goals': goals}
         bot.register_next_step_handler(callback.message, process_fund_choice)
+        bot.answer_callback_query(callback.id)
+
+    elif callback.data == 'news_economic':
+        post = get_latest_post_by_source('russianmacro')
+        if post:
+            title, link, summary, published = post
+            text = f"🎓 *Экономика*\n\n*{title}*\n{summary[:200]}...\n\n[Читать]({link})"
+        else:
+            text = "😴 Новостей пока нет."
+        bot.send_message(callback.message.chat.id, text, parse_mode='Markdown')
+        bot.answer_callback_query(callback.id)
+
+    elif callback.data == 'news_vedomosti':
+        post = get_latest_post_by_source('sport_channel')
+        if post:
+            title, link, summary, published = post
+            text = f"💪 *Спорт*\n\n*{title}*\n{summary[:200]}...\n\n[Читать]({link})"
+        else:
+            text = "😴 Новостей пока нет."
+        bot.send_message(callback.message.chat.id, text, parse_mode='Markdown')
+        bot.answer_callback_query(callback.id)
+    
+    elif callback.data == 'news_nature':
+        post = get_latest_post_by_source('ecoworldnews')    
+        if post:
+            title, link, summary, published = post
+            text = f"🌳 *Природа*\n\n*{title}*\n{summary[:200]}...\n\n[Читать]({link})"
+        else:
+            text = "😴 Новостей пока нет."
+        bot.send_message(callback.message.chat.id, text, parse_mode='Markdown')
+        bot.answer_callback_query(callback.id)
+
+    elif callback.data == 'news_esport':
+        post = get_latest_post_by_source('@taverngg')    
+        if post:
+            title, link, summary, published = post
+            text = f"🧑‍💻 *Киберспорт*\n\n*{title}*\n{summary[:200]}...\n\n[Читать]({link})"
+        else:
+            text = "😴 Новостей пока нет."
+        bot.send_message(callback.message.chat.id, text, parse_mode='Markdown')
+        bot.answer_callback_query(callback.id)
+    
+    elif callback.data == 'news_tech':
+        post = get_latest_post_by_source('@yandex_tech')
+        if post:
+            title, link, summary, published = post
+            text = f"🧑‍💻 *Технологии*\n\n*{title}*\n{summary[:200]}...\n\n[Читать]({link})"
+        else:
+            text = "😴 Новостей пока нет."
+        bot.send_message(callback.message.chat.id, text, parse_mode='Markdown')
         bot.answer_callback_query(callback.id)
 
     elif callback.data == 'news':
@@ -943,7 +1002,7 @@ def callback_message(callback):
             msg += f"{i}. {name} — {current}₽ / {target}₽ ({percent:.1f}%)\n"
         msg += "\nНапиши номер цели, которую хочешь удалить:"
         bot.send_message(callback.message.chat.id, msg)
-        bot.user_data[user_id] = {'delete_goals': goals}
+        user_temp_data[user_id] = {'delete_goals': goals}
         bot.register_next_step_handler(callback.message, process_delete_goal_choice)
         bot.answer_callback_query(callback.id)
 
@@ -988,7 +1047,7 @@ def callback_message(callback):
             msg += f"{i}. {inc[1]} — {inc[2]}₽ ({inc[3]})\n"
         msg += "\nНапиши номер дохода, который хочешь удалить:"
         bot.send_message(callback.message.chat.id, msg)
-        bot.user_data[user_id] = {'income_delete_list': incomes}
+        user_temp_data[user_id] = {'income_delete_list': incomes}
         bot.register_next_step_handler(callback.message, process_delete_income)
         bot.answer_callback_query(callback.id)
 
@@ -1214,9 +1273,6 @@ def get_user_name_for_registration(message):
 # ========== ЗАПУСК ==========
 if __name__ == '__main__':
     bot.polling(none_stop=True)
-
-
-
 
 
 
