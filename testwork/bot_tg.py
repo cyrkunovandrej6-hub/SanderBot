@@ -18,13 +18,24 @@ class Expense:
         conn.close()
 
     @classmethod
-    def delete_goal(cls, goal_id, user_id):
+    def get_total_income(cls, user_id):
         conn = sqlite3.connect('finance_bot.db')
         cur = conn.cursor()
-        cur.execute("DELETE FROM goals WHERE id = ? AND user_id = ?", (goal_id, user_id))
-        conn.commit()
+        cur.execute("SELECT SUM(amount) FROM income WHERE user_id = ?", (user_id,))
+        result = cur.fetchone()[0]
         cur.close()
         conn.close()
+        return result if result else 0
+
+    @classmethod
+    def get_total_expenses(cls, user_id):
+        conn = sqlite3.connect('finance_bot.db')
+        cur = conn.cursor()
+        cur.execute("SELECT SUM(amount) FROM expenses WHERE user_id = ?", (user_id,))
+        result = cur.fetchone()[0]
+        cur.close()
+        conn.close()
+        return result if result else 0
 
     @classmethod
     def add_goal(cls, user_id, name, target):
@@ -81,26 +92,6 @@ class Expense:
         results = cur.fetchall()
         cur.close()
         conn.close()
-        return results
-
-    @classmethod
-    def add_fixed_expense(cls, user_id, name, amount, category):
-        conn = sqlite3.connect('finance_bot.db')
-        cur = conn.cursor()
-        cur.execute("INSERT INTO fixed_expenses (user_id, name, amount, category) VALUES (?, ?, ?, ?)", (user_id, name, amount, category))
-        conn.commit()
-        cur.close()
-        conn.close()
-
-
-    @classmethod
-    def get_fixed_expenses(cls, user_id):
-        conn = sqlite3.connect('finance_bot.db')
-        cur = conn.cursor()
-        cur.execute("SELECT name, amount, category FROM fixed_expenses WHERE user_id = ?", (user_id,))
-        results = cur.fetchall()
-        cur.close()
-        cur.close()
         return results
 
     @classmethod
@@ -245,31 +236,33 @@ class Expense:
         return emojys.get(self.category, '💰')
 
     def format_message(self):
-        
         if self.category and self.category[0] in '🍔🚇🛍️🎮🏠💊✏️📚🐱':
-            emojy = self.get_category_emojy() 
-            comment = self.get_comment()
+            emoji = self.category[0]
+            category_text = self.category[1:].strip()
         else:
-            emojy = self.get_category_emojy()
+            emoji = self.get_category_emojy()
             category_text = self.category
         comment = self.get_comment()
-        return f"""{emojy} Трата: {self.amount}₽
-📌 Категория: {category_text}
-
-{comment}"""
+        return f"""{emoji} Трата: {self.amount}₽
+    📌 Категория: {category_text}
+    {comment}"""
 
 def process_custom_category(message):
-        category = message.text.strip()
-        user_id = message.from_user.id
-        expense = user_temp_data.get(user_id)
-        if expense:
-            expense.category = category
-            expense.save_to_db()
-            bot.send_message(message.chat.id, expense.format_message())
-            bot.send_message(message.chat.id, "💰 Управление тратами", reply_markup=get_expenses_keyboard())
-            del user_temp_data[user_id]
-        else:
-            bot.send_message(message.chat.id, "❌ Что-то пошло не так. Попробуй сначала.")
+    category = message.text.strip()
+    user_id = message.from_user.id
+    expense = user_temp_data.get(user_id)
+    
+    if not expense:
+        bot.send_message(message.chat.id, "❌ Ошибка: сначала введи сумму")
+        return
+    
+    expense.category = category
+    expense.save_to_db()
+    
+    bot.send_message(message.chat.id, expense.format_message())
+    bot.send_message(message.chat.id, "💰 Управление тратами\n\nВыбери действие:", reply_markup=get_expenses_keyboard())
+    del user_temp_data[user_id]
+
 @bot.message_handler(commands=['add_expense'])
 def ask_expence(message):
     msg = bot.send_message(message.chat.id, 'Введи сумму траты ✍️')
@@ -352,6 +345,15 @@ def create_users_table():
     conn.close()
     print("✅ Таблица users создана")
 
+def create_income_table():
+    conn = sqlite3.connect('finance_bot.db')
+    cur = conn.cursor()
+    cur.execute('''CREATE TABLE IF NOT EXISTS income (id INTEGER PRIMARY KEY AUTOINCREMENT,user_id INTEGER,amount REAL,category TEXT,date TEXT)''')
+    conn.commit()
+    cur.close()
+    conn.close()
+    
+
 def create_goals_table():
     conn = sqlite3.connect('finance_bot.db')
     cur = conn.cursor()
@@ -417,6 +419,7 @@ def get_last_user_name():
         return result[0]
     return None
 # ========= ТАБЛИЦЫ ===========
+create_income_table()
 create_goals_table()
 create_fixed_income_table()
 create_fixed_expenses_table()
@@ -625,7 +628,6 @@ def get_main_menu_keyboard():
     
     markup.add(
         types.InlineKeyboardButton('🧩 Цели', callback_data='goals'),
-        types.InlineKeyboardButton('👁 Новости', callback_data='news')
     )
     
     markup.add(
@@ -636,7 +638,6 @@ def get_main_menu_keyboard():
         types.InlineKeyboardButton('💎 Подписка', callback_data='subscription'),
         types.InlineKeyboardButton('📞 Поддержка', callback_data='support')
     )
-    
     
     return markup
 def get_goals_keyboard():
@@ -808,6 +809,21 @@ def process_fixed_category(call):
     markup = get_fixed_expenses_keyboard()
     bot.send_message(call.message.chat.id, "💸 ПОСТОЯННЫЕ РАСХОДЫ", reply_markup=markup)
     bot.answer_callback_query(call.id, "✅ Готово!")
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('cat_'))
+def process_category(call):
+    category = call.data.replace('cat_', '')
+    user_id = call.from_user.id
+    expense = user_temp_data.get(user_id)
+    if not expense:
+        bot.answer_callback_query(call.id, "❌ Ошибка: сначала введи сумму")
+        return
+    expense.category = category
+    expense.save_to_db()
+    bot.send_message(call.message.chat.id, expense.format_message())
+    bot.send_message(call.message.chat.id, "💰 Управление тратами\n\nВыбери действие:", reply_markup=get_expenses_keyboard())
+    del user_temp_data[user_id]
+    bot.answer_callback_query(call.id, "✅ Трата добавлена!")
 
 @bot.callback_query_handler(func=lambda call: call.data == 'fixed_custom_category')
 def handle_fixed_custom_category(call):
@@ -1094,25 +1110,19 @@ def callback_message(callback):
     elif callback.data == 'stats':
         user_id = callback.from_user.id
         user_name = get_last_user_name() or "Пользователь"
-        most_common_category_name, most_common_category_count = Expense.get_most_common_category(user_id)
-        monthly_income = 0
-        monthly_expenses = 0
-        balance = 0
-        operations_count = 0
-        days_active = 0
-        avg_check = 0
-
+        total_income = Expense.get_total_income(user_id)
+        total_expenses = Expense.get_total_expenses(user_id)
+        balance = total_income - total_expenses
+    
         message = f"📊 СТАТИСТИКА ПОЛЬЗОВАТЕЛЯ: {user_name}\n\n"
-        message += f"💰 ПОСТОЯННЫЕ:\n"
-        message += f"• Доходы в месяц: {monthly_income}₽\n"
-        message += f"• Расходы в месяц: {monthly_expenses}₽\n"
-        message += f"• Баланс: {balance}₽\n\n"
-        message += f"📈 АКТИВНОСТЬ:\n"
-        message += f"• Всего операций: {operations_count}\n"
-        message += f"• Средний чек: {avg_check}₽\n\n"
-        message += f"• Самая частая категория:{most_common_category_name} — {most_common_category_count}₽\n"
+        message += f"💰 ОБЩИЕ ПОКАЗАТЕЛИ:\n"
+        message += f"• Всего доходов: {total_income}₽\n"
+        message += f"• Всего расходов: {total_expenses}₽\n"
+        message += f"• Денежный поток: {balance}₽\n"
+    
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton('🔙 Назад в меню', callback_data='menu'))
+    
         bot.send_message(callback.message.chat.id, message, reply_markup=markup)
         bot.answer_callback_query(callback.id)
 
@@ -1167,7 +1177,6 @@ def get_user_name_for_registration(message):
         types.KeyboardButton('💸 Постоянные расходы'),
         types.KeyboardButton('💼 Постоянные доходы'),
         types.KeyboardButton('🧩 Цели'),
-        types.KeyboardButton('👁 Новости'),
         types.KeyboardButton('🧮 Калькулятор'),
         types.KeyboardButton('💎 Подписка'),
         types.KeyboardButton('📞 Поддержка')
