@@ -488,12 +488,17 @@ def process_fund_amount(message):
 def process_goal_name(message):
     name = message.text.strip()
     user_id = message.from_user.id
-    user_temp_data = getattr(bot, 'user_data', {})
+    
     if user_id not in user_temp_data:
         user_temp_data[user_id] = {}
     user_temp_data[user_id]['goal_name'] = name
-    msg = bot.send_message(message.chat.id, f"🎯 Название: {name}\n\n" "Введи сумму, которую нужно накопить (только число):")
+    
+    msg = bot.send_message(
+        message.chat.id,
+        f"🎯 Название: {name}\n\nВведи сумму, которую нужно накопить (только число):"
+    )
     bot.register_next_step_handler(msg, process_goal_target)
+
 def process_goal_target(message):
     try:
         target = float(message.text)
@@ -560,13 +565,19 @@ def process_income_amount(message):
             return
         user_id = message.from_user.id
         name = user_temp_data[user_id]['income_name']
+        user_temp_data[user_id]['income_amount'] = amount
+        
         markup = types.InlineKeyboardMarkup(row_width=2)
         categories = ['💼 Зарплата', '🏠 Аренда', '📈 Инвестиции', '💻 Фриланс', '🎁 Подарки', '💳 Проценты']
         for cat in categories:
             markup.add(types.InlineKeyboardButton(cat, callback_data=f'income_cat_{cat}'))
-            markup.add(types.InlineKeyboardButton('✏️ Своя', callback_data='income_custom_category'))
-            bot.send_message(message.chat.id, f"💰 {name}: {amount}₽\n\nВыбери категорию:", reply_markup=markup)
-            user_temp_data[user_id]['income_amount'] = amount
+        markup.add(types.InlineKeyboardButton('✏️ Своя', callback_data='income_custom_category'))
+        
+        bot.send_message(
+            message.chat.id,
+            f"💰 {name}: {amount}₽\n\nВыбери категорию:",
+            reply_markup=markup
+        )
     except ValueError:
         bot.send_message(message.chat.id, "❌ Введи число!")
 
@@ -665,12 +676,6 @@ def get_goals_keyboard():
     )
     return markup
 
-def get_fixed_expenses_keyboard():
-    markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(types.InlineKeyboardButton('➕ Добавить', callback_data='add_fixed_expense'), types.InlineKeyboardButton('📋 Список', callback_data='list_fixed_expenses'))
-    markup.add(types.InlineKeyboardButton('✏️ Редактировать', callback_data='edit_fixed_expense'), types.InlineKeyboardButton('🗑 Удалить', callback_data='delete_fixed_expense'))
-    markup.add(types.InlineKeyboardButton('🔙 Назад в меню', callback_data='menu'))
-    return markup
 def get_fixed_income_keyboard():
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(types.InlineKeyboardButton('➕ Добавить', callback_data='add_income'), types.InlineKeyboardButton('📋 Список', callback_data='list_income'))
