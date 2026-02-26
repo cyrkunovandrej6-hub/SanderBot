@@ -573,11 +573,14 @@ def process_income_amount(message):
 def process_fixed_name(message):
     name = message.text.strip()
     user_id = message.from_user.id
-    user_temp_data = getattr(bot, 'user_data', {})
     if user_id not in user_temp_data:
         user_temp_data[user_id] = {}
     user_temp_data[user_id]['fixed_name'] = name
-    msg = bot.send_message(message.chat.id, f"💰 Название: {name}\n\n" "Введи сумму расхода в месяц:")
+    
+    msg = bot.send_message(
+        message.chat.id,
+        f"💰 Название: {name}\n\nВведи сумму расхода в месяц:"
+    )
     bot.register_next_step_handler(msg, process_fixed_amount)
 
 def process_fixed_amount(message):
@@ -586,15 +589,22 @@ def process_fixed_amount(message):
         if amount <= 0:
             bot.send_message(message.chat.id, "❌ Сумма должна быть больше 0!")
             return
+            
         user_id = message.from_user.id
-        name = user_temp_data[user_id]['fixed_name']
+        name = user_temp_data[user_id].get('fixed_name', 'Без названия')
         markup = types.InlineKeyboardMarkup(row_width=2)
         categories = ['🏠 Коммуналка', '💳 Кредиты', '📺 Подписки', '🚗 Транспорт', '🏥 Здоровье', '📚 Обучение']
         for cat in categories:
             markup.add(types.InlineKeyboardButton(cat, callback_data=f'fixed_cat_{cat}'))
-            markup.add(types.InlineKeyboardButton('✏️ Своя', callback_data='fixed_custom_category'))
-            bot.send_message(message.chat.id, f"💰 {name}: {amount}₽\n\nВыбери категорию:", reply_markup=markup)
-            user_temp_data[user_id]['fixed_amount'] = amount
+        markup.add(types.InlineKeyboardButton('✏️ Своя категория', callback_data='fixed_custom_category'))
+        user_temp_data[user_id]['fixed_amount'] = amount
+        
+        bot.send_message(
+            message.chat.id,
+            f"💰 {name}: {amount}₽\n\nВыбери категорию:",
+            reply_markup=markup
+        )
+        
     except ValueError:
         bot.send_message(message.chat.id, "❌ Введи число!")
 
@@ -798,8 +808,12 @@ def confirm_delete_fixed(call):
 def process_fixed_category(call):
     category = call.data.replace('fixed_cat_', '')
     user_id = call.from_user.id
-    name = user_temp_data[user_id]['fixed_name']
-    amount = user_temp_data[user_id]['fixed_amount']
+    user_data = user_temp_data.get(user_id, {})
+    name = user_data.get('fixed_name', 'Без названия')
+    amount = user_data.get('fixed_amount', 0) 
+    if not name or not amount:
+        bot.answer_callback_query(call.id, "❌ Ошибка: начни сначала")
+        return
     Expense.add_fixed_expense(user_id, name, amount, category)
     bot.send_message(
         call.message.chat.id,
@@ -808,6 +822,12 @@ def process_fixed_category(call):
     )
     markup = get_fixed_expenses_keyboard()
     bot.send_message(call.message.chat.id, "💸 ПОСТОЯННЫЕ РАСХОДЫ", reply_markup=markup)
+    if user_id in user_temp_data:
+        if 'fixed_name' in user_temp_data[user_id]:
+            del user_temp_data[user_id]['fixed_name']
+        if 'fixed_amount' in user_temp_data[user_id]:
+            del user_temp_data[user_id]['fixed_amount']
+    
     bot.answer_callback_query(call.id, "✅ Готово!")
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('cat_'))
