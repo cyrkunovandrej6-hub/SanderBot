@@ -598,8 +598,7 @@ def get_fixed_expenses_keyboard():
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(types.InlineKeyboardButton('➕ Добавить', callback_data='add_fixed'),
                types.InlineKeyboardButton('📋 Список', callback_data='list_fixed'))
-    markup.add(types.InlineKeyboardButton('✏️ Редактировать', callback_data='edit_fixed'),
-               types.InlineKeyboardButton('🗑 Удалить', callback_data='delete_fixed'))
+    markup.add(types.InlineKeyboardButton('🗑 Удалить', callback_data='delete_fixed'))
     markup.add(types.InlineKeyboardButton('🔙 Назад', callback_data='menu'))
     return markup
 
