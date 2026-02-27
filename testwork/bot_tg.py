@@ -341,7 +341,6 @@ def process_deposit_cap(call):
     del user_temp_data[user_id]
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('tax_'))
-@bot.callback_query_handler(func=lambda call: call.data.startswith('tax_'))
 def process_tax_calc(call):
     rate = call.data.replace('tax_', '')
     user_id = call.from_user.id
@@ -715,7 +714,7 @@ def get_finance_calculator_keyboard():
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(types.InlineKeyboardButton('💰 Кредит', callback_data='calc_credit'), types.InlineKeyboardButton('💰 Вклады', callback_data='calc_deposit'))
     markup.add(types.InlineKeyboardButton('💼 Рентабельность', callback_data='calc_profit'), types.InlineKeyboardButton('📊 Точка безубыточности', callback_data='calc_breakeven'))
-    markup.add(types.InlineKeyboardButton('🧾 Налоги', callback_data='calc_tax'), types.InlineKeyboardButton('💵 Валютный', callback_data='calc_currency'))
+    markup.add(types.InlineKeyboardButton('🧾 Налоги', callback_data='calc_tax'))
     markup.add(types.InlineKeyboardButton('🔙 Назад', callback_data='calculator'))
     return markup
 
