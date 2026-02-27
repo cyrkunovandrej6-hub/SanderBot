@@ -251,6 +251,33 @@ def ask_expence(message):
     msg = bot.send_message(message.chat.id, 'Введи сумму траты ✍️')
     bot.register_next_step_handler(msg, process_expense_amount)
 
+def process_tax_expenses(message):
+    try:
+        expenses = float(message.text)
+        user_id = message.from_user.id
+        income = user_temp_data[user_id]['tax_income']
+        
+        if expenses > income:
+            bot.send_message(message.chat.id, "❌ Расходы не могут быть больше дохода!")
+            return
+            
+        tax = (income - expenses) * 0.15
+        result = f"🧾 *НАЛОГ 15% (Доходы - Расходы)*\n\n"
+        result += f"• Доход: {income:,.0f}₽\n"
+        result += f"• Расход: {expenses:,.0f}₽\n"
+        result += f"• Налогооблагаемая база: {income - expenses:,.0f}₽\n"
+        result += f"• Налог: {tax:,.0f}₽\n"
+        result += f"• К выплате: {income - tax:,.0f}₽"
+        
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton('🔄 Новый расчёт', callback_data='calc_tax'))
+        markup.add(types.InlineKeyboardButton('🔙 В меню', callback_data='calc_finance'))
+        
+        bot.send_message(message.chat.id, result, reply_markup=markup)
+        del user_temp_data[user_id]
+    except ValueError:
+        bot.send_message(message.chat.id, "❌ Введи число!")
+
 def process_expense_amount(message):
     try:
         amount = float(message.text)
@@ -301,7 +328,7 @@ def process_deposit_cap(call):
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton('🔄 Новый расчёт', callback_data='calc_deposit'))
     markup.add(types.InlineKeyboardButton('🔙 В меню', callback_data='calc_finance'))
-    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=result, reply_markup=markup)
+    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=result, reply_markup=markup, parse_mode='Markdown')
     bot.answer_callback_query(call.id)
     del user_temp_data[user_id]
 
@@ -320,7 +347,7 @@ def process_tax_calc(call):
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton('🔄 Новый расчёт', callback_data='calc_tax'))
         markup.add(types.InlineKeyboardButton('🔙 В меню', callback_data='calc_finance'))
-        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=markup)
+        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=markup, parse_mode='Markdown')
         del user_temp_data[user_id]
         
     elif rate == '13':
@@ -329,7 +356,7 @@ def process_tax_calc(call):
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton('🔄 Новый расчёт', callback_data='calc_tax'))
         markup.add(types.InlineKeyboardButton('🔙 В меню', callback_data='calc_finance'))
-        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=markup)
+        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=markup, parse_mode='Markdown')
         del user_temp_data[user_id]
         
     elif rate == '20':
@@ -338,7 +365,7 @@ def process_tax_calc(call):
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton('🔄 Новый расчёт', callback_data='calc_tax'))
         markup.add(types.InlineKeyboardButton('🔙 В меню', callback_data='calc_finance'))
-        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=markup)
+        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=markup, parse_mode='Markdown')
         del user_temp_data[user_id]
         
     elif rate == '15':
@@ -368,6 +395,12 @@ def process_category(call):
     bot.send_message(call.message.chat.id, "💰 Управление тратами\n\nВыбери действие:", reply_markup=get_expenses_keyboard())
     del user_temp_data[user_id]
     bot.answer_callback_query(call.id, "✅ Трата добавлена!")
+
+@bot.callback_query_handler(func=lambda call: call.data == 'tax_expenses')
+def handle_tax_expenses(call):
+    bot.answer_callback_query(call.id)
+    msg = bot.send_message(call.message.chat.id, "🧾 Введи сумму расходов:")
+    bot.register_next_step_handler(msg, process_tax_expenses)
 
 @bot.callback_query_handler(func=lambda call: call.data == 'balance')
 def show_balance(call):
@@ -676,24 +709,45 @@ def process_fixed_amount(message):
 
 def get_calculator_main_keyboard():
     markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(types.InlineKeyboardButton('🧮 Обычный', callback_data='calc_simple'), types.InlineKeyboardButton('💰 Финансовый', callback_data='calc_finance'))
-    markup.add(types.InlineKeyboardButton('🔙 Назад', callback_data='menu'))
+    markup.add(
+        types.InlineKeyboardButton('🧮 Обычный', callback_data='calc_simple'),
+        types.InlineKeyboardButton('💰 Финансовый', callback_data='calc_finance')
+    )
+    markup.add(
+        types.InlineKeyboardButton('🔙 Назад', callback_data='menu')
+    )
     return markup
 
 def get_finance_calculator_keyboard():
     markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(types.InlineKeyboardButton('💰 Кредит', callback_data='calc_credit'), types.InlineKeyboardButton('💰 Вклады', callback_data='calc_deposit'))
-    markup.add(types.InlineKeyboardButton('💼 Рентабельность', callback_data='calc_profit'), types.InlineKeyboardButton('📊 Точка безубыточности', callback_data='calc_breakeven'))
-    markup.add(types.InlineKeyboardButton('🧾 Налоги', callback_data='calc_tax'))
-    markup.add(types.InlineKeyboardButton('🔙 Назад', callback_data='calculator'))
+    markup.add(
+        types.InlineKeyboardButton('💰 Кредит', callback_data='calc_credit'),
+        types.InlineKeyboardButton('💰 Вклады', callback_data='calc_deposit')
+    )
+    markup.add(
+        types.InlineKeyboardButton('💼 Рентабельность', callback_data='calc_profit'),
+        types.InlineKeyboardButton('📊 Точка безубыточности', callback_data='calc_breakeven')
+    )
+    markup.add(
+        types.InlineKeyboardButton('🧾 Налоги', callback_data='calc_tax')
+    )
+    markup.add(
+        types.InlineKeyboardButton('🔙 Назад', callback_data='calculator')
+    )
     return markup
 
 def get_fixed_expenses_keyboard():
     markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(types.InlineKeyboardButton('➕ Добавить', callback_data='add_fixed'),
-               types.InlineKeyboardButton('📋 Список', callback_data='list_fixed'))
-    markup.add(types.InlineKeyboardButton('🗑 Удалить', callback_data='delete_fixed'))
-    markup.add(types.InlineKeyboardButton('🔙 Назад', callback_data='menu'))
+    markup.add(
+        types.InlineKeyboardButton('➕ Добавить', callback_data='add_fixed'),
+        types.InlineKeyboardButton('📋 Список', callback_data='list_fixed')
+    )
+    markup.add(
+        types.InlineKeyboardButton('🗑 Удалить', callback_data='delete_fixed')
+    )
+    markup.add(
+        types.InlineKeyboardButton('🔙 Назад', callback_data='menu')
+    )
     return markup
 
 def get_user_name(message):
@@ -706,39 +760,67 @@ def get_user_name(message):
 
 def get_main_menu_keyboard():
     markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(types.InlineKeyboardButton('🎩 Траты', callback_data='balance'),
-               types.InlineKeyboardButton('📊 Статистика', callback_data='stats'))
-    markup.add(types.InlineKeyboardButton('💸 Расходы', callback_data='fixed_expenses'),
-               types.InlineKeyboardButton('💼 Постоянные доходы', callback_data='income'))
-    markup.add(types.InlineKeyboardButton('🧩 Цели', callback_data='goals'))
-    markup.add(types.InlineKeyboardButton('🧮 Калькулятор', callback_data='calculator'))
-    markup.add(types.InlineKeyboardButton('💎 Подписка', callback_data='subscription'),
-               types.InlineKeyboardButton('📞 Поддержка', callback_data='support'))
+    markup.add(
+        types.InlineKeyboardButton('🎩 Траты', callback_data='balance'),
+        types.InlineKeyboardButton('📊 Статистика', callback_data='stats')
+    )
+    markup.add(
+        types.InlineKeyboardButton('💸 Расходы', callback_data='fixed_expenses'),
+        types.InlineKeyboardButton('💼 Постоянные доходы', callback_data='income')
+    )
+    markup.add(
+        types.InlineKeyboardButton('🧩 Цели', callback_data='goals')
+    )
+    markup.add(
+        types.InlineKeyboardButton('🧮 Калькулятор', callback_data='calculator')
+    )
+    markup.add(
+        types.InlineKeyboardButton('💎 Подписка', callback_data='subscription'),
+        types.InlineKeyboardButton('📞 Поддержка', callback_data='support')
+    )
     return markup
 
 def get_goals_keyboard():
     markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(types.InlineKeyboardButton('➕ Новая цель', callback_data='add_goal'),
-               types.InlineKeyboardButton('📋 Мои цели', callback_data='list_goals'))
-    markup.add(types.InlineKeyboardButton('💰 Пополнить', callback_data='fund_goal'),
-               types.InlineKeyboardButton('❌ Удалить', callback_data='delete_goal'))
-    markup.add(types.InlineKeyboardButton('🔙 Назад', callback_data='menu'))
+    markup.add(
+        types.InlineKeyboardButton('➕ Новая цель', callback_data='add_goal'),
+        types.InlineKeyboardButton('📋 Мои цели', callback_data='list_goals')
+    )
+    markup.add(
+        types.InlineKeyboardButton('💰 Пополнить', callback_data='fund_goal'),
+        types.InlineKeyboardButton('❌ Удалить', callback_data='delete_goal')
+    )
+    markup.add(
+        types.InlineKeyboardButton('🔙 Назад', callback_data='menu')
+    )
     return markup
 
 def get_fixed_income_keyboard():
     markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(types.InlineKeyboardButton('➕ Добавить', callback_data='add_income'),
-               types.InlineKeyboardButton('📋 Список', callback_data='list_income'))
-    markup.add(types.InlineKeyboardButton('🗑 Удалить', callback_data='delete_income'))
-    markup.add(types.InlineKeyboardButton('🔙 Назад', callback_data='menu'))
+    markup.add(
+        types.InlineKeyboardButton('➕ Добавить', callback_data='add_income'),
+        types.InlineKeyboardButton('📋 Список', callback_data='list_income')
+    )
+    markup.add(
+        types.InlineKeyboardButton('🗑 Удалить', callback_data='delete_income')
+    )
+    markup.add(
+        types.InlineKeyboardButton('🔙 Назад', callback_data='menu')
+    )
     return markup
 
 def get_expenses_keyboard():
     markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(types.InlineKeyboardButton('➕ Добавить трату', callback_data='add_expense_menu'),
-               types.InlineKeyboardButton('📊 Анализ трат', callback_data='expense_analysis'))
-    markup.add(types.InlineKeyboardButton('📆 Траты за неделю', callback_data='expenses_week'))
-    markup.add(types.InlineKeyboardButton('🔙 Назад в меню', callback_data='menu'))
+    markup.add(
+        types.InlineKeyboardButton('➕ Добавить трату', callback_data='add_expense_menu'),
+        types.InlineKeyboardButton('📊 Анализ трат', callback_data='expense_analysis')
+    )
+    markup.add(
+        types.InlineKeyboardButton('📆 Траты за неделю', callback_data='expenses_week')
+    )
+    markup.add(
+        types.InlineKeyboardButton('🔙 Назад в меню', callback_data='menu')
+    )
     return markup
 
 def format_main_menu(user_name):
@@ -1342,7 +1424,7 @@ def process_credit_rate(message):
         bot.send_message(message.chat.id, result, reply_markup=markup)
         del user_temp_data[user_id]
     except Exception as e:
-        bot.send_message(message.chat.id, f"❌ Ошибка расчёта")
+        bot.send_message(message.chat.id, "❌ Ошибка расчёта")
 
 def process_deposit_amount(message):
     try:
