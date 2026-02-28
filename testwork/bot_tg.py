@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 bot = telebot.TeleBot('8526938179:AAHKiBZba2oy3cIcW8eigJL8WAfMypV75YI')
 user_temp_data = {}
-
+# ======== КНОПКА ТРАТ =========
 class Expense:
     @classmethod
     def delete_goal(cls, goal_id, user_id):
@@ -245,6 +245,25 @@ def process_custom_category(message):
     bot.send_message(message.chat.id, expense.format_message())
     bot.send_message(message.chat.id, "💰 Управление тратами\n\nВыбери действие:", reply_markup=get_expenses_keyboard())
     del user_temp_data[user_id]
+
+@bot.message_handler(commands=['otz'])
+def handle_otz_command(message):
+    bot.send_message(message.chat,id, "📝 *ОСТАВИТЬ ОТЗЫВ*\n\n" "Напиши свои пожелания, идеи или замечания — ", parse_mode='Markdown')
+    bot.register_next_step_handler(message, process_feedback)
+
+def process_feedback(message):
+    feedback = message.text
+    user_id = message.from_user.id
+    username = message.from_user.username or "нет username"
+    first_name = message.from_user.first_name or ""
+    DEVELOPER_ID = 5933197105
+    dev_message = (f"📩 *НОВЫЙ ОТЗЫВ*\n\n" f"👤 Пользователь: {first_name}\n" f"🆔 ID: {user_id}\n" f"📱 Username: @{username}\n" f"💬 Отзыв:\n{feedback}")
+    try:
+        bot.send_message(DEVELOPER_ID, dev_message, parse_mode='Markdown')
+        bot.send_message( message.chat.id, "✅ Спасибо за отзыв! Он уже отправлен разработчику.\n" "Твоё мнение помогает нам становиться лучше! ✨")
+    except Exception as e:
+        bot.send_message(message.chat.id, "❌ Не удалось отправить отзыв. Попробуй позже или свяжись с поддержкой.")
+        
 
 @bot.message_handler(commands=['add_expense'])
 def ask_expence(message):
@@ -515,14 +534,14 @@ def get_last_user_name():
     if result:
         return result[0]
     return None
-
+# ====== ТАБЛИЦЫ =======
 create_income_table()
 create_goals_table()
 create_fixed_income_table()
 create_fixed_expenses_table()
 create_users_table()
 create_expenses_table()
-
+# ======= ФУНКЦИИ БОТА ==========
 def process_delete_goal_choice(message):
     try:
         num = int(message.text)
@@ -828,8 +847,7 @@ def confirm_delete_goal(call):
     Expense.delete_goal(goal_id, user_id)
     bot.answer_callback_query(call.id, "✅ Цель удалена!", show_alert=True)
     markup = get_goals_keyboard()
-    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
-                          text="🎯 УПРАВЛЕНИЕ ЦЕЛЯМИ", reply_markup=markup)
+    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,text="🎯 УПРАВЛЕНИЕ ЦЕЛЯМИ", reply_markup=markup)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('income_cat_'))
 def process_income_category(call):
@@ -853,7 +871,7 @@ def process_income_category(call):
     markup = get_fixed_income_keyboard()
     bot.send_message(call.message.chat.id, "💼 ПОСТОЯННЫЕ ДОХОДЫ", reply_markup=markup)
     bot.answer_callback_query(call.id)
-
+# ============ ОБРАБОТЧИКИ REPLY =============
 @bot.callback_query_handler(func=lambda call: call.data == 'income_custom_category')
 def handle_income_custom_category(call):
     bot.answer_callback_query(call.id)
@@ -937,6 +955,16 @@ def process_fixed_custom_category(message):
     markup = get_fixed_expenses_keyboard()
     bot.send_message(message.chat.id, "💸 ПОСТОЯННЫЕ РАСХОДЫ", reply_markup=markup)
 
+@bot.message_handler(func=lambda message: message.text == '🧩 Цели')
+def handle_goals_reply(message):
+    markup = get_goals_keyboard()
+    bot.send_message(message.chat,id, "🎯 УПРАВЛЕНИЕ ЦЕЛЯМИ\n\nСтавь финансовые цели и отслеживай прогресс:", reply_markup=markup)
+
+@bot.message_handler(func=lambda message: message.text == '🧮 Калькулятор')
+def handle_calculator_reply(message):
+    markup = get_calculator_main_keyboard()
+    bot.send_message(message.chat,id,  "🧮 *ВЫБЕРИТЕ РЕЖИМ РАБОТЫ*\n\n" "Доступны два режима:\n" "• Обычный калькулятор — просто отправь пример (2+2)\n" "• Финансовый калькулятор — расширенные расчёты", parse_mode='Markdown', reply_markup=markup)
+
 @bot.message_handler(commands=['start'])
 def start(message):
     markup = types.InlineKeyboardMarkup()
@@ -989,9 +1017,7 @@ def handle_fixed_income(message):
 @bot.message_handler(func=lambda message: message.text == '💸 Постоянные расходы')
 def handle_fixed_expenses(message):
     markup = get_fixed_expenses_keyboard()
-    bot.send_message(message.chat.id,
-                     "💸 ПОСТОЯННЫЕ РАСХОДЫ\n\nЗдесь ты можешь управлять регулярными платежами:\n• 🏠 Коммуналка\n• 💳 Кредиты\n• 📺 Подписки\n• и другие ежемесячные расходы",
-                     reply_markup=markup)
+    bot.send_message(message.chat.id,"💸 ПОСТОЯННЫЕ РАСХОДЫ\n\nЗдесь ты можешь управлять регулярными платежами:\n• 🏠 Коммуналка\n• 💳 Кредиты\n• 📺 Подписки\n• и другие ежемесячные расходы", reply_markup=markup)
 
 @bot.message_handler(func=lambda message: message.text == '🎩 Траты')
 def handle_traits(message):
