@@ -248,7 +248,7 @@ def process_custom_category(message):
 
 @bot.message_handler(commands=['otz'])
 def handle_otz_command(message):
-    bot.send_message(message.chat,id, "📝 *ОСТАВИТЬ ОТЗЫВ*\n\n" "Напиши свои пожелания, идеи или замечания — ", parse_mode='Markdown')
+    bot.send_message(message.chat.id, "📝 *ОСТАВИТЬ ОТЗЫВ*\n\n" "Напиши свои пожелания, идеи или замечания — ", parse_mode='Markdown')
     bot.register_next_step_handler(message, process_feedback)
 
 def process_feedback(message):
@@ -958,12 +958,12 @@ def process_fixed_custom_category(message):
 @bot.message_handler(func=lambda message: message.text == '🧩 Цели')
 def handle_goals_reply(message):
     markup = get_goals_keyboard()
-    bot.send_message(message.chat,id, "🎯 УПРАВЛЕНИЕ ЦЕЛЯМИ\n\nСтавь финансовые цели и отслеживай прогресс:", reply_markup=markup)
+    bot.send_message(message.chat.id, "🎯 УПРАВЛЕНИЕ ЦЕЛЯМИ\n\nСтавь финансовые цели и отслеживай прогресс:", reply_markup=markup)
 
 @bot.message_handler(func=lambda message: message.text == '🧮 Калькулятор')
 def handle_calculator_reply(message):
     markup = get_calculator_main_keyboard()
-    bot.send_message(message.chat,id,  "🧮 *ВЫБЕРИТЕ РЕЖИМ РАБОТЫ*\n\n" "Доступны два режима:\n" "• Обычный калькулятор — просто отправь пример (2+2)\n" "• Финансовый калькулятор — расширенные расчёты", parse_mode='Markdown', reply_markup=markup)
+    bot.send_message(message.chat.id,  "🧮 *ВЫБЕРИТЕ РЕЖИМ РАБОТЫ*\n\n" "Доступны два режима:\n" "• Обычный калькулятор — просто отправь пример (2+2)\n" "• Финансовый калькулятор — расширенные расчёты", parse_mode='Markdown', reply_markup=markup)
 
 @bot.message_handler(commands=['start'])
 def start(message):
