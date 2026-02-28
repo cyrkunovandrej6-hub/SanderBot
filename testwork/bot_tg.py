@@ -17,6 +17,46 @@ class Expense:
         conn.close()
 
     @classmethod
+    def get_goals_count(cls, user_id):
+        conn = sqlite3.connect('finance_bot.db')
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM goals WHERE user_id = ?", (user_id,))
+        result = cur.fetchone()[0]
+        cur.close()
+        conn.close()
+        return result
+
+    @classmethod
+    def get_active_goals(cls, user_id):
+        conn = sqlite3.connect('finance_bot.db')
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM goals WHERE user_id = ? AND current < target", (user_id,))
+        result = cur.fetchone()[0]
+        cur.close()
+        conn.close()
+        return result
+
+    @classmethod
+    def get_fixed_income_total(cls, user_id):
+        conn = sqlite3.connect('finance_bot.db')
+        cur = conn.cursor()
+        cur.execute("SELECT SUM(amount) FROM fixed_income WHERE user_id = ?", (user_id,))
+        result = cur.fetchone()[0]
+        cur.close()
+        conn.close()
+        return result if result else 0
+
+    @classmethod
+    def get_fixed_expenses_total(cls, user_id):
+        conn = sqlite3.connect('finance_bot.db')
+        cur = conn.cursor()
+        cur.execute("SELECT SUM(amount) FROM fixed_expenses WHERE user_id = ?", (user_id,))
+        result = cur.fetchone()[0]
+        cur.close()
+        conn.close()
+        return result if result else 0
+
+    @classmethod
     def get_total_income(cls, user_id):
         conn = sqlite3.connect('finance_bot.db')
         cur = conn.cursor()
@@ -790,7 +830,7 @@ def get_expenses_keyboard():
     markup.add(types.InlineKeyboardButton('🔙 Назад в меню', callback_data='menu'))
     return markup
 
-def format_main_menu(user_name):
+def format_main_menu(user_name, user_id):
     current_time = datetime.now()
     greeting = "Добрый день"
     if 6 <= current_time.hour < 12:
@@ -801,29 +841,33 @@ def format_main_menu(user_name):
         greeting = "Добрый вечер"
     else:
         greeting = "Доброй ночи"
+    goals_count = Expense.get_goals_count(user_id)
+    active_goals = Expense.get_active_goals(user_id)
+    fixed_income = Expense.get_fixed_income_total(user_id)
+    fixed_expenses = Expense.get_fixed_expenses_total(user_id)
+    today_total = Expense.get_today_total(user_id)
+    week_total = Expense.week_expence(user_id)
+    goals_status = f"{active_goals} активных / {goals_count} всего" if goals_count > 0 else "🎯 Нет целей"
     menu_text = f"""
-☀️ {greeting}, {user_name}! 👋
+    ☀️ {greeting}, {user_name}! 👋
 
-✨ ДОБРО ПОЖАЛОВАТЬ В SANDER FINANCE 5.1!
+✨ ДОБРО ПОЖАЛОВАТЬ В SANDER FINANCE!
 Ваш персональный финансовый помощник с калькулятором 🏦
 
 📊 ВАША ФИНАНСОВАЯ СВОДКА:
 
-📅 ДНЕВНОЙ БЮДЖЕТ: 1,000₽
-📈 СТАТУС БЮДЖЕТА: 💎 Отлично
-
 💸 РАСХОДЫ:
-• Сегодня: 0₽
-• За неделю: 0₽
+• Сегодня: {today_total:,.0f}₽
+• За неделю: {week_total:,.0f}₽
 
 🎯 ЦЕЛИ:
-• Всего целей: 0
-• Активных: 0
-• Статус: 🎯 Нет целей
+• Всего целей: {goals_count}
+• Активных: {active_goals}
+• Статус: {goals_status}
 
 💼 РЕГУЛЯРНЫЕ ОПЕРАЦИИ:
-• Доходы в месяц: 0₽
-• Расходы в месяц: 0₽
+• Доходы в месяц: {fixed_income:,.0f}₽
+• Расходы в месяц: {fixed_expenses:,.0f}₽
 • Финансовое здоровье: ⚖️ Сбалансированный бюджет
 
 💎 ПОДПИСКА: 🆓 Бесплатный тариф
@@ -832,9 +876,6 @@ def format_main_menu(user_name):
 • Кредиты и вклады
 • Инфляция и ROI
 • Цели накоплений
-
-📈 СОВЕТ НА СЕГОДНЯ:
-💡 Баланс низкий. Рассмотрите возможность добавления постоянного дохода.
 
 📞 Поддержка: @hXwlssS
 """
@@ -1265,6 +1306,7 @@ def callback_message(callback):
 
     elif callback.data == 'menu':
         user_name = get_last_user_name()
+        user_id = callback.from_user.id
         if not user_name:
             user_name = get_user_name(callback.message)
         menu_text = format_main_menu(user_name)
@@ -1328,6 +1370,7 @@ def callback_message(callback):
 def get_user_name_for_registration(message):
     name = message.text.strip()
     save_user_to_db(name)
+    user_id = message.from_user.id
     bot.send_message(message.chat.id, f"✅ Отлично, {name}! Регистрация успешно завершена!")
     menu_text = format_main_menu(name)
     bot.send_message(message.chat.id, menu_text, reply_markup=get_main_menu_keyboard())
