@@ -1309,9 +1309,8 @@ def callback_message(callback):
         user_id = callback.from_user.id
         if not user_name:
             user_name = get_user_name(callback.message)
-        menu_text = format_main_menu(user_name)
-        bot.edit_message_text(chat_id=callback.message.chat.id, message_id=callback.message.message_id,
-                              text=menu_text, reply_markup=get_main_menu_keyboard())
+        menu_text = format_main_menu(user_name, user_id)
+        bot.edit_message_text(chat_id=callback.message.chat.id, message_id=callback.message.message_id,text=menu_text, reply_markup=get_main_menu_keyboard())
         bot.answer_callback_query(callback.id)
 
     elif callback.data == 'add_expense_menu':
@@ -1372,7 +1371,7 @@ def get_user_name_for_registration(message):
     save_user_to_db(name)
     user_id = message.from_user.id
     bot.send_message(message.chat.id, f"✅ Отлично, {name}! Регистрация успешно завершена!")
-    menu_text = format_main_menu(name)
+    menu_text = format_main_menu(name, user_id)
     bot.send_message(message.chat.id, menu_text, reply_markup=get_main_menu_keyboard())
     reply_markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     reply_markup.add(
