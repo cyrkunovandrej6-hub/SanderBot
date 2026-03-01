@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 bot = telebot.TeleBot('8526938179:AAHKiBZba2oy3cIcW8eigJL8WAfMypV75YI')
 user_temp_data = {}
-# ======== КНОПКА ТРАТ =========
+
 class Expense:
     @classmethod
     def delete_goal(cls, goal_id, user_id):
@@ -288,7 +288,7 @@ def process_custom_category(message):
 
 @bot.message_handler(commands=['otz'])
 def handle_otz_command(message):
-    bot.send_message(message.chat.id, "📝 *ОСТАВИТЬ ОТЗЫВ*\n\n" "Напиши свои пожелания, идеи или замечания — ", parse_mode='Markdown')
+    bot.send_message(message.chat.id, "📝 *ОСТАВИТЬ ОТЗЫВ*\n\nНапиши свои пожелания, идеи или замечания — ", parse_mode='Markdown')
     bot.register_next_step_handler(message, process_feedback)
 
 def process_feedback(message):
@@ -300,11 +300,10 @@ def process_feedback(message):
     dev_message = (f"📩 *НОВЫЙ ОТЗЫВ*\n\n" f"👤 Пользователь: {first_name}\n" f"🆔 ID: {user_id}\n" f"📱 Username: @{username}\n" f"💬 Отзыв:\n{feedback}")
     try:
         bot.send_message(DEVELOPER_ID, dev_message, parse_mode='Markdown')
-        bot.send_message( message.chat.id, "✅ Спасибо за отзыв! Он уже отправлен разработчику.\n" "Твоё мнение помогает нам становиться лучше! ✨")
+        bot.send_message(message.chat.id, "✅ Спасибо за отзыв! Он уже отправлен разработчику.\nТвоё мнение помогает нам становиться лучше! ✨")
     except Exception as e:
         bot.send_message(message.chat.id, "❌ Не удалось отправить отзыв. Попробуй позже или свяжись с поддержкой.")
         
-
 @bot.message_handler(commands=['add_expense'])
 def ask_expence(message):
     msg = bot.send_message(message.chat.id, 'Введи сумму траты ✍️')
@@ -572,14 +571,14 @@ def get_last_user_name():
     if result:
         return result[0]
     return None
-# ====== ТАБЛИЦЫ =======
+
 create_income_table()
 create_goals_table()
 create_fixed_income_table()
 create_fixed_expenses_table()
 create_users_table()
 create_expenses_table()
-# ======= ФУНКЦИИ БОТА ==========
+
 def process_delete_goal_choice(message):
     try:
         num = int(message.text)
@@ -847,7 +846,7 @@ def format_main_menu(user_name, user_id):
     week_total = Expense.week_expence(user_id)
     goals_status = f"{active_goals} активных / {goals_count} всего" if goals_count > 0 else "🎯 Нет целей"
     menu_text = f"""
-    ☀️ {greeting}, {user_name}! 👋
+☀️ {greeting}, {user_name}! 👋
 
 ✨ ДОБРО ПОЖАЛОВАТЬ В SANDER FINANCE!
 Ваш персональный финансовый помощник с калькулятором 🏦
@@ -910,7 +909,7 @@ def process_income_category(call):
     markup = get_fixed_income_keyboard()
     bot.send_message(call.message.chat.id, "💼 ПОСТОЯННЫЕ ДОХОДЫ", reply_markup=markup)
     bot.answer_callback_query(call.id)
-# ============ ОБРАБОТЧИКИ REPLY =============
+
 @bot.callback_query_handler(func=lambda call: call.data == 'income_custom_category')
 def handle_income_custom_category(call):
     bot.answer_callback_query(call.id)
@@ -1002,7 +1001,7 @@ def handle_goals_reply(message):
 @bot.message_handler(func=lambda message: message.text == '🧮 Калькулятор')
 def handle_calculator_reply(message):
     markup = get_calculator_main_keyboard()
-    bot.send_message(message.chat.id,  "🧮 *ВЫБЕРИТЕ РЕЖИМ РАБОТЫ*\n\n" "Доступны два режима:\n" "• Обычный калькулятор — просто отправь пример (2+2)\n" "• Финансовый калькулятор — расширенные расчёты", parse_mode='Markdown', reply_markup=markup)
+    bot.send_message(message.chat.id,  "🧮 *ВЫБЕРИТЕ РЕЖИМ РАБОТЫ*\n\nДоступны два режима:\n• Обычный калькулятор — просто отправь пример (2+2)\n• Финансовый калькулятор — расширенные расчёты", parse_mode='Markdown', reply_markup=markup)
 
 @bot.message_handler(commands=['start'])
 def start(message):
@@ -1211,7 +1210,6 @@ def callback_message(callback):
         bot.send_message(callback.message.chat.id, "🎯 УПРАВЛЕНИЕ ЦЕЛЯМИ\n\nСтавь финансовые цели и отслеживай прогресс:", reply_markup=markup)
         bot.answer_callback_query(callback.id)
 
-    # ===== ПОСТОЯННЫЕ ДОХОДЫ =====
     elif callback.data == 'fixed_income':
         markup = get_fixed_income_keyboard()
         bot.send_message(callback.message.chat.id,
@@ -1220,7 +1218,7 @@ def callback_message(callback):
         bot.answer_callback_query(callback.id)
 
     elif callback.data == 'add_income':
-        msg = bot.send_message(callback.message.chat.id, "➕ ДОБАВЛЕНИЕ ПОСТОЯННОГО ДОХОДА\n\nВведи название :")
+        msg = bot.send_message(callback.message.chat.id, "➕ ДОБАВЛЕНИЕ ПОСТОЯННОГО ДОХОДА\n\nВведи название:")
         bot.register_next_step_handler(msg, process_income_name)
         bot.answer_callback_query(callback.id)
 
@@ -1228,7 +1226,7 @@ def callback_message(callback):
         user_id = callback.from_user.id
         incomes = Expense.get_fixed_income(user_id)
         if not incomes:
-            bot.send_message(callback.message.chat.id, "📋 ПОСТОЯННЫЕ ДОХОДЫ\n\nУ тебя пока нет постоянных доходов.\nНажми ➕ Добавить, чтобы создать.")
+            bot.send_message(callback.message.chat.id, "📋 ПОСТОЯННЫЕ ДОХОДЫ\n\nУ тебя пока нет доходов.")
         else:
             msg = "📋 ТВОИ ПОСТОЯННЫЕ ДОХОДЫ:\n\n"
             total = 0
@@ -1254,7 +1252,6 @@ def callback_message(callback):
         bot.register_next_step_handler(callback.message, process_delete_income)
         bot.answer_callback_query(callback.id)
 
-    # ===== ПОСТОЯННЫЕ РАСХОДЫ =====
     elif callback.data == 'fixed_expenses':
         markup = get_fixed_expenses_keyboard()
         bot.send_message(callback.message.chat.id,
@@ -1271,7 +1268,7 @@ def callback_message(callback):
         user_id = callback.from_user.id
         expenses = Expense.get_fixed_expenses(user_id)
         if not expenses:
-            bot.send_message(callback.message.chat.id, "📋 СПИСОК ПОСТОЯННЫХ РАСХОДОВ\n\nУ тебя пока нет постоянных расходов.\nНажми ➕ Добавить, чтобы создать.")
+            bot.send_message(callback.message.chat.id, "📋 СПИСОК ПОСТОЯННЫХ РАСХОДОВ\n\nУ тебя пока нет расходов.")
         else:
             msg = "📋 ТВОИ ПОСТОЯННЫЕ РАСХОДЫ:\n\n"
             total = 0
@@ -1385,6 +1382,7 @@ def get_user_name_for_registration(message):
         types.KeyboardButton('📞 Поддержка')
     )
     bot.send_message(message.chat.id, "👇 Быстрое меню снизу:", reply_markup=reply_markup)
+
 # ========== КАЛЬКУЛЯТОР ==========
 
 def process_credit_amount(message):
@@ -1452,6 +1450,7 @@ def process_deposit_amount(message):
         bot.register_next_step_handler(msg, process_deposit_term)
     except ValueError:
         bot.send_message(message.chat.id, "❌ Введи число!")
+
 def process_deposit_term(message):
     try:
         term = int(message.text)
@@ -1652,7 +1651,6 @@ def process_tax_income(message):
         bot.send_message(message.chat.id, "🧾 Выбери ставку налога:", reply_markup=markup)
     except ValueError:
         bot.send_message(message.chat.id, "❌ Введи число!")
-
 
 if __name__ == '__main__':
     bot.polling(none_stop=True)
