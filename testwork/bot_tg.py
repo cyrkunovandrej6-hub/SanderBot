@@ -1210,7 +1210,7 @@ def callback_message(callback):
         bot.send_message(callback.message.chat.id, "🎯 УПРАВЛЕНИЕ ЦЕЛЯМИ\n\nСтавь финансовые цели и отслеживай прогресс:", reply_markup=markup)
         bot.answer_callback_query(callback.id)
 
-    elif callback.data == 'fixed_income':
+    elif callback.data == 'income':
         markup = get_fixed_income_keyboard()
         bot.send_message(callback.message.chat.id,
                          "💼 ПОСТОЯННЫЕ ДОХОДЫ\n\n💰 Регулярные поступления:\n• Зарплата\n• Аренда\n• Проценты\n• Подработки\n• Другие источники",
