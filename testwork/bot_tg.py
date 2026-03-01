@@ -327,11 +327,6 @@ def process_expense_amount(message):
     except ValueError:
         bot.send_message(message.chat.id, "❌ Введи число!")
 
-@bot.callback_query_handler(func=lambda call: call.data == 'tax_expenses')
-def handle_tax_expenses(call):
-    bot.answer_callback_query(call.id)
-    msg = bot.send_message(call.message.chat.id, "🧾 Введи сумму расходов:")
-    bot.register_next_step_handler(msg, process_tax_expenses)
 def process_tax_expenses(message):
     try:
         expenses = float(message.text)
@@ -346,18 +341,22 @@ def process_tax_expenses(message):
             bot.send_message(message.chat.id, "❌ Расходы не могут быть больше дохода!")
             return
             
-        tax = (income - expenses) * 0.15
-        result = f"🧾 *НАЛОГ 15% (Доходы - Расходы)*\n\n"
-        result += f"• Доход: {income:,.0f}₽\n"
-        result += f"• Расход: {expenses:,.0f}₽\n"
-        result += f"• Налог: {tax:,.0f}₽\n"
-        result += f"• К выплате: {income - tax:,.0f}₽"
+        taxable = income - expenses
+        tax = taxable * 0.15
+        total = income - tax
+        
+        text = f"🧾 *НАЛОГ 15% (Доходы - Расходы)*\n\n"
+        text += f"• Доход: {income:,.0f}₽\n"
+        text += f"• Расход: {expenses:,.0f}₽\n"
+        text += f"• Налогооблагаемая база: {taxable:,.0f}₽\n"
+        text += f"• Налог: {tax:,.0f}₽\n"
+        text += f"• К выплате: {total:,.0f}₽"
         
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton('🔄 Новый расчёт', callback_data='calc_tax'))
         markup.add(types.InlineKeyboardButton('🔙 В меню', callback_data='calc_finance'))
         
-        bot.send_message(message.chat.id, result, reply_markup=markup)
+        bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode='Markdown')
         del user_temp_data[user_id]
     except ValueError:
         bot.send_message(message.chat.id, "❌ Введи число!")
@@ -407,30 +406,22 @@ def process_tax_calc(call):
         bot.answer_callback_query(call.id, "❌ Ошибка, начни сначала")
         return
     income = user_temp_data[user_id]['tax_income']
+    
     if rate == '6':
         tax = income * 0.06
-        text = f"🧾 *НАЛОГ 6% (УСН Доходы)*\n\nДоход: {income:,.0f}₽\nНалог: {tax:,.0f}₽\nК выплате: {income - tax:,.0f}₽"
-        markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton('🔄 Новый расчёт', callback_data='calc_tax'))
-        markup.add(types.InlineKeyboardButton('🔙 В меню', callback_data='calc_finance'))
-        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=markup, parse_mode='Markdown')
-        del user_temp_data[user_id]  
+        total = income - tax
+        text = f"🧾 *НАЛОГ 6% (УСН Доходы)*\n\nДоход: {income:,.0f}₽\nНалог: {tax:,.0f}₽\nК выплате: {total:,.0f}₽"
+        
     elif rate == '13':
         tax = income * 0.13
-        text = f"🧾 *НДФЛ 13%*\n\nДоход: {income:,.0f}₽\nНалог: {tax:,.0f}₽\nК выплате: {income - tax:,.0f}₽"
-        markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton('🔄 Новый расчёт', callback_data='calc_tax'))
-        markup.add(types.InlineKeyboardButton('🔙 В меню', callback_data='calc_finance'))
-        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=markup, parse_mode='Markdown')
-        del user_temp_data[user_id]
+        total = income - tax
+        text = f"🧾 *НДФЛ 13%*\n\nДоход: {income:,.0f}₽\nНалог: {tax:,.0f}₽\nК выплате: {total:,.0f}₽"
+        
     elif rate == '20':
-        tax = income * 0.2
-        text = f"🧾 *НДС 20%*\n\nСумма: {income:,.0f}₽\nНДС: {tax:,.0f}₽\nС НДС: {income + tax:,.0f}₽"
-        markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton('🔄 Новый расчёт', callback_data='calc_tax'))
-        markup.add(types.InlineKeyboardButton('🔙 В меню', callback_data='calc_finance'))
-        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=markup, parse_mode='Markdown')
-        del user_temp_data[user_id]
+        tax = income * 0.20
+        total = income - tax
+        text = f"🧾 *НДС 20%*\n\nСумма без НДС: {income:,.0f}₽\nНДС: {tax:,.0f}₽\nСумма с НДС: {income + tax:,.0f}₽"
+        
     elif rate == '15':
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton('Ввести расходы', callback_data='tax_expenses'))
@@ -441,6 +432,13 @@ def process_tax_calc(call):
             reply_markup=markup
         )
         return
+    
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton('🔄 Новый расчёт', callback_data='calc_tax'))
+    markup.add(types.InlineKeyboardButton('🔙 В меню', callback_data='calc_finance'))
+    
+    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text, reply_markup=markup, parse_mode='Markdown')
+    del user_temp_data[user_id]
     bot.answer_callback_query(call.id)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('cat_'))
@@ -1213,19 +1211,17 @@ def callback_message(callback):
         bot.send_message(callback.message.chat.id, "🎯 УПРАВЛЕНИЕ ЦЕЛЯМИ\n\nСтавь финансовые цели и отслеживай прогресс:", reply_markup=markup)
         bot.answer_callback_query(callback.id)
 
-    elif callback.data == 'delete_income':
-        user_id = callback.from_user.id
-        incomes = Expense.get_fixed_income(user_id)
-        if not incomes:
-            bot.answer_callback_query(callback.id, "❌ Нет доходов для удаления", show_alert=True)
-            return
-        msg = "🗑 ВЫБЕРИ ДОХОД ДЛЯ УДАЛЕНИЯ:\n\n"
-        for i, inc in enumerate(incomes, 1):
-            msg += f"{i}. {inc[1]} — {inc[2]}₽ ({inc[3]})\n"
-        msg += "\nНапиши номер дохода, который хочешь удалить:"
-        bot.send_message(callback.message.chat.id, msg)
-        user_temp_data[user_id] = {'income_delete_list': incomes}
-        bot.register_next_step_handler(callback.message, process_delete_income)
+    # ===== ПОСТОЯННЫЕ ДОХОДЫ =====
+    elif callback.data == 'fixed_income':
+        markup = get_fixed_income_keyboard()
+        bot.send_message(callback.message.chat.id,
+                         "💼 ПОСТОЯННЫЕ ДОХОДЫ\n\n💰 Регулярные поступления:\n• Зарплата\n• Аренда\n• Проценты\n• Подработки\n• Другие источники",
+                         reply_markup=markup)
+        bot.answer_callback_query(callback.id)
+
+    elif callback.data == 'add_income':
+        msg = bot.send_message(callback.message.chat.id, "➕ ДОБАВЛЕНИЕ ПОСТОЯННОГО ДОХОДА\n\nВведи название :")
+        bot.register_next_step_handler(msg, process_income_name)
         bot.answer_callback_query(callback.id)
 
     elif callback.data == 'list_income':
@@ -1243,29 +1239,26 @@ def callback_message(callback):
             bot.send_message(callback.message.chat.id, msg)
         bot.answer_callback_query(callback.id)
 
-    elif callback.data == 'delete_fixed':
+    elif callback.data == 'delete_income':
         user_id = callback.from_user.id
-        expenses = Expense.get_fixed_expenses(user_id)
-        if not expenses:
-            bot.answer_callback_query(callback.id, "❌ Нет расходов для удаления", show_alert=True)
+        incomes = Expense.get_fixed_income(user_id)
+        if not incomes:
+            bot.answer_callback_query(callback.id, "❌ Нет доходов для удаления", show_alert=True)
             return
-        markup = types.InlineKeyboardMarkup(row_width=1)
-        for exp in expenses:
-            markup.add(types.InlineKeyboardButton(f"❌ {exp[1]} — {exp[2]}₽ ({exp[3]})", callback_data=f'delete_fixed_{exp[0]}'))
-        markup.add(types.InlineKeyboardButton('🔙 Назад', callback_data='fixed_expenses'))
-        bot.edit_message_text(chat_id=callback.message.chat.id, message_id=callback.message.message_id,
-                              text="🗑 ВЫБЕРИ РАСХОД ДЛЯ УДАЛЕНИЯ:", reply_markup=markup)
+        msg = "🗑 ВЫБЕРИ ДОХОД ДЛЯ УДАЛЕНИЯ:\n\n"
+        for i, inc in enumerate(incomes, 1):
+            msg += f"{i}. {inc[1]} — {inc[2]}₽ ({inc[3]})\n"
+        msg += "\nНапиши номер дохода, который хочешь удалить:"
+        bot.send_message(callback.message.chat.id, msg)
+        user_temp_data[user_id] = {'income_delete_list': incomes}
+        bot.register_next_step_handler(callback.message, process_delete_income)
         bot.answer_callback_query(callback.id)
 
-    elif callback.data == 'add_income':
-        msg = bot.send_message(callback.message.chat.id, "➕ ДОБАВЛЕНИЕ ПОСТОЯННОГО ДОХОДА\n\nВведи название :")
-        bot.register_next_step_handler(msg, process_income_name)
-        bot.answer_callback_query(callback.id)
-
-    elif callback.data == 'fixed_income':
-        markup = get_fixed_income_keyboard()
+    # ===== ПОСТОЯННЫЕ РАСХОДЫ =====
+    elif callback.data == 'fixed_expenses':
+        markup = get_fixed_expenses_keyboard()
         bot.send_message(callback.message.chat.id,
-                         "💼 ПОСТОЯННЫЕ ДОХОДЫ\n\n💰 Регулярные поступления:\n• Зарплата\n• Аренда\n• Проценты\n• Подработки\n• Другие источники",
+                         "💸 ПОСТОЯННЫЕ РАСХОДЫ\n\nЗдесь ты можешь управлять регулярными платежами:\n• 🏠 Коммуналка\n• 💳 Кредиты\n• 📺 Подписки\n• и другие ежемесячные расходы",
                          reply_markup=markup)
         bot.answer_callback_query(callback.id)
 
@@ -1289,11 +1282,18 @@ def callback_message(callback):
             bot.send_message(callback.message.chat.id, msg)
         bot.answer_callback_query(callback.id)
 
-    elif callback.data == 'fixed_expenses':
-        markup = get_fixed_expenses_keyboard()
-        bot.send_message(callback.message.chat.id,
-                         "💸 ПОСТОЯННЫЕ РАСХОДЫ\n\nЗдесь ты можешь управлять регулярными платежами:\n• 🏠 Коммуналка\n• 💳 Кредиты\n• 📺 Подписки\n• и другие ежемесячные расходы",
-                         reply_markup=markup)
+    elif callback.data == 'delete_fixed':
+        user_id = callback.from_user.id
+        expenses = Expense.get_fixed_expenses(user_id)
+        if not expenses:
+            bot.answer_callback_query(callback.id, "❌ Нет расходов для удаления", show_alert=True)
+            return
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        for exp in expenses:
+            markup.add(types.InlineKeyboardButton(f"❌ {exp[1]} — {exp[2]}₽ ({exp[3]})", callback_data=f'delete_fixed_{exp[0]}'))
+        markup.add(types.InlineKeyboardButton('🔙 Назад', callback_data='fixed_expenses'))
+        bot.edit_message_text(chat_id=callback.message.chat.id, message_id=callback.message.message_id,
+                              text="🗑 ВЫБЕРИ РАСХОД ДЛЯ УДАЛЕНИЯ:", reply_markup=markup)
         bot.answer_callback_query(callback.id)
 
     elif callback.data == 'expenses_week':
@@ -1310,7 +1310,7 @@ def callback_message(callback):
         if not user_name:
             user_name = get_user_name(callback.message)
         menu_text = format_main_menu(user_name, user_id)
-        bot.edit_message_text(chat_id=callback.message.chat.id, message_id=callback.message.message_id,text=menu_text, reply_markup=get_main_menu_keyboard())
+        bot.edit_message_text(chat_id=callback.message.chat.id, message_id=callback.message.message_id, text=menu_text, reply_markup=get_main_menu_keyboard())
         bot.answer_callback_query(callback.id)
 
     elif callback.data == 'add_expense_menu':
