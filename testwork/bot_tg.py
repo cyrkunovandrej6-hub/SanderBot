@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 bot = telebot.TeleBot('8526938179:AAHKiBZba2oy3cIcW8eigJL8WAfMypV75YI')
 user_temp_data = {}
+bot.timeout = 90
 
 class Expense:
     @classmethod
