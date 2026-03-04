@@ -241,16 +241,19 @@ class Expense:
         return "нет данных", 0
 
     @classmethod
-    def week_expence(cls, user_id):
+    def get_week_comparison(cls, user_id):
+        today = datetime.now()
+        week_ago = today - timedelta(days=7)
+        two_weeks_ago = today - timedelta(days=14)
         conn = sqlite3.connect('finance_bot.db')
         cur = conn.cursor()
-        week_ago = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
-        today = datetime.now().strftime("%Y-%m-%d")
-        cur.execute('SELECT SUM(amount) FROM expenses WHERE user_id = ? AND date BETWEEN ? AND ?', (user_id, week_ago, today))
-        result = cur.fetchone()[0]
+        cur.execute('''SELECT SUM(amount) FROM expenses WHERE user_id = ? AND date BETWEEN ? AND ?''', (user_id, week_ago.strftime("%Y-%m-%d"), today.strftime("%Y-%m-%d")))
+        current = cur.fetchone()[0] or 0
+        cur.execute('''SELECT SUM(amount) FROM expenses WHERE user_id = ? AND date BETWEEN ? AND ? ''', (user_id, two_weeks_ago.strftime("%Y-%m-%d"), week_ago.strftime("%Y-%m-%d")))
+        previous = cur.fetchone()[0] or 0
         cur.close()
         conn.close()
-        return result if result else 0
+        return current, previous
 
     @classmethod
     def get_by_category(cls, user_id):
@@ -930,7 +933,8 @@ def format_main_menu(user_name, user_id):
     fixed_income = Expense.get_fixed_income_total(user_id)
     fixed_expenses = Expense.get_fixed_expenses_total(user_id)
     today_total = Expense.get_today_total(user_id)
-    week_total = Expense.week_expence(user_id)
+    current_week, _ = Expense.get_week_comparison(user_id)
+    week_total = current_week
     goals_status = f"{active_goals} активных / {goals_count} всего" if goals_count > 0 else "🎯 Нет целей"
     menu_text = f"""
 ☀️ {greeting}, {user_name}! 👋
@@ -1382,10 +1386,26 @@ def callback_message(callback):
 
     elif callback.data == 'expenses_week':
         user_id = callback.from_user.id
-        week_total = Expense.week_expence(user_id)
+        current, previous = Expense.get_week_comparison(user_id)
+        if previous > 0:
+            change = ((current - previous) / previous) * 100
+            arrow = "📈" if change > 0 else "📉" if change < 0 else "➡️"
+            change_text = f"{arrow} {change:+.1f}%"
+        else:
+            change_text = "📊 нет данных за прошлый период"
+        msg = f"📊 *АНАЛИЗ ТРАТ ЗА 7 ДНЕЙ*\n\n"
+        msg += f"📆 Последние 7 дней: *{current:,.0f}₽*\n" 
+        msg += f"📅 Предыдущие 7 дней: {previous:,.0f}₽\n"
+        msg += f"📈 Динамика: {change_text}\n"
+        if current > previous:
+            msg += f"\n⚠️ Траты выросли на {abs(change):.1f}% по сравнению с прошлой неделей."
+        elif current < previous:
+            msg += f"\n✅ Молодец! Траты снизились на {abs(change):.1f}%."
+        else:
+            msg += f"\n➡️ Траты остались на том же уровне."
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton('🔙 Назад к тратам', callback_data='balance'))
-        bot.send_message(callback.message.chat.id, f"📆 Траты за неделю: {week_total}₽", reply_markup=markup)
+        bot.send_message(callback.message.chat.id, msg, parse_mode='Markdown', reply_markup=markup)
         bot.answer_callback_query(callback.id)
 
     elif callback.data == 'menu':
