@@ -4,6 +4,7 @@ import sqlite3
 from datetime import datetime, timedelta
 import robokassa
 import time
+from robokassa import Robokassa
 
 bot = telebot.TeleBot('8526938179:AAHKiBZba2oy3cIcW8eigJL8WAfMypV75YI')
 user_temp_data = {}
@@ -1833,18 +1834,18 @@ def activate_subscription(user_id, sub_type):
     bot.send_message(ADMIN_ID, f"💰 *Новая подписка*\n\n" f"👤 Пользователь ID: `{user_id}`\n" f"📅 Тип: {sub_type}\n" f"✅ Активирована до: {expires_at}", parse_mode='Markdown')
 
 def generate_payment_link(user_id, subscription_type):
+    """
+    Генерирует ссылку на оплату через Robokassa
+    Возвращает (payment_link, inv_id)
+    """
     price = SUBSCRIPTION_PRICES[subscription_type]
     inv_id = int(f"{user_id}{int(time.time())}")
-    descriptions = {'month': 'Подписка Sander Finance на 1 месяц', 'year': 'Подписка Sander Finance на 1 год'}
-    shp_params = {'Shp_user_id': user_id, 'Shp_sub_type': subscription_type}
-    payment_link = robokassa.generate_open_payment_link(
-    merchant_login=ROBOKASSA_LOGIN,
-    password1=ROBOKASSA_PASSWORD1,
-    inv_id=inv_id,
-    out_sum=price,
-    description=descriptions[subscription_type],
-    is_test=ROBOKASSA_TEST_MODE
-)
+    descriptions = {
+        'month': 'Подписка Sander Finance на 1 месяц',
+        'year': 'Подписка Sander Finance на 1 год'
+    }
+    rk = Robokassa(merchant_login=ROBOKASSA_LOGIN, password1=ROBOKASSA_PASSWORD1, password2=ROBOKASSA_PASSWORD2, is_test=ROBOKASSA_TEST_MODE)
+    payment_link = rk.generate_payment_link(out_sum=price, inv_id=inv_id, description=descriptions[subscription_type], shp_user_id=user_id, shp_sub_type=subscription_type)
     return payment_link, inv_id
 
 if __name__ == '__main__':
