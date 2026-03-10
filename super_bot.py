@@ -174,7 +174,7 @@ def callback_message(callback):
         bot.edit_message_text(
             chat_id=callback.message.chat.id,
             message_id=callback.message.message_id,
-            text='📝 Давай зарегистрируемся! Как мне тебя называть? 🤔'
+            text='📝 Давай зарегистрируемся! Как мне тебя называть? 🤔
         )
         # Регистрируем следующий шаг - получение имени
         bot.register_next_step_handler(callback.message, get_user_name_for_registration)
@@ -243,7 +243,13 @@ def get_user_name_for_registration(message):
         menu_text,
         reply_markup=get_main_menu_keyboard()
     )
+
+# ========== ЗАПУСК ==========
 if __name__ == '__main__':
+    print("🤖 Бот Sander Finance запущен...")
+    print("📦 Используется SQLite база данных (файл finance_bot.db)")
     bot.polling(none_stop=True)
+
+
 
 
