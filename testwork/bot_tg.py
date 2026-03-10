@@ -1837,7 +1837,14 @@ def generate_payment_link(user_id, subscription_type):
     inv_id = int(f"{user_id}{int(time.time())}")
     descriptions = {'month': 'Подписка Sander Finance на 1 месяц', 'year': 'Подписка Sander Finance на 1 год'}
     shp_params = {'Shp_user_id': user_id, 'Shp_sub_type': subscription_type}
-    payment_link = robokassa.get_payment_link(merchant_login=ROBOKASSA_LOGIN, password1=ROBOKASSA_PASSWORD1, inv_id=inv_id, inv_desc=descriptions[subscription_type], out_sum=price, is_test=ROBOKASSA_TEST_MODE, **shp_params)
+    payment_link = robokassa.generate_open_payment_link(
+    merchant_login=ROBOKASSA_LOGIN,
+    password1=ROBOKASSA_PASSWORD1,
+    inv_id=inv_id,
+    out_sum=price,
+    description=descriptions[subscription_type],
+    is_test=ROBOKASSA_TEST_MODE
+)
     return payment_link, inv_id
 
 if __name__ == '__main__':
