@@ -2,10 +2,21 @@ import telebot
 from telebot import types
 import sqlite3
 from datetime import datetime, timedelta
+import robokassa
+import time
 
 bot = telebot.TeleBot('8526938179:AAHKiBZba2oy3cIcW8eigJL8WAfMypV75YI')
 user_temp_data = {}
 bot.timeout = 90
+
+ADMIN_ID = 5933197105
+
+# ========== ROBOKASSA ==========
+ROBOKASSA_LOGIN = 'sanderfinanceBOT'
+ROBOKASSA_PASSWORD1 = 'cyrkunovandrej6'
+ROBOKASSA_PASSWORD2 = 'cyrkunovandrej67'
+ROBOKASSA_TEST_MODE = False
+SUBSCRIPTION_PRICES = {'month': 149, 'year': 1699}
 
 ABOUT_TEXT = """
 📌 *SANDER FINANCE — ПОЛНАЯ ИНФОРМАЦИЯ*
@@ -576,6 +587,14 @@ def create_users_table():
     conn.close()
     print("✅ Таблица users создана")
 
+def create_subscriptions_table():
+    conn = sqlite3.connect('finance_bot.db')
+    cur = conn.cursor()
+    cur.execute('''CREATE TABLE IF NOT EXISTS subscriptions (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER UNIQUE, expires_at TEXT, is_active INTEGER DEFAULT 1)''')
+    conn.commit()
+    cur.close()
+    conn.close()
+
 def create_income_table():
     conn = sqlite3.connect('finance_bot.db')
     cur = conn.cursor()
@@ -642,6 +661,15 @@ def create_fixed_expenses_table():
     cur.close()
     conn.close()
 
+def is_premium(user_id):
+    conn = sqlite3.connect('finance_bot.db')
+    cur = conn.cursor()
+    cur.execute('''SELECT is_active FROM subscriptions WHERE user_id = ? AND expires_at > datetime('now')''', (user_id,))
+    result = cur.fetchone()
+    cur.close()
+    conn.close()
+    return result is not None
+
 def save_user_to_db(name):
     conn = sqlite3.connect('finance_bot.db')
     cur = conn.cursor()
@@ -662,12 +690,14 @@ def get_last_user_name():
         return result[0]
     return None
 
+# ====== ТАБЛИЦЫ =======
 create_income_table()
 create_goals_table()
 create_fixed_income_table()
 create_fixed_expenses_table()
 create_users_table()
 create_expenses_table()
+create_subscriptions_table()
 
 def process_delete_goal_choice(message):
     try:
@@ -864,6 +894,12 @@ def get_finance_calculator_keyboard():
     markup.add(types.InlineKeyboardButton('🔙 Назад', callback_data='calculator'))
     return markup
 
+def get_subscription_keyboard():
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    markup.add(types.InlineKeyboardButton('💎 1 месяц — 149₽', callback_data='sub_month'), types.InlineKeyboardButton('👑 1 год — 1699₽', callback_data='sub_year'))
+    markup.add(types.InlineKeyboardButton('🔙 Назад', callback_data='menu'))
+    return markup
+
 def get_fixed_expenses_keyboard():
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(types.InlineKeyboardButton('➕ Добавить', callback_data='add_fixed'),
@@ -958,7 +994,7 @@ def format_main_menu(user_name, user_id):
 • Расходы в месяц: {fixed_expenses:,.0f}₽
 • Финансовое здоровье: ⚖️ Сбалансированный бюджет
 
-💎 ПОДПИСКА: 🆓 Бесплатный тариф
+💎 ПОДПИСКА:
 
 🧮 Финансовый калькулятор:
 • Кредиты и вклады
@@ -1186,6 +1222,17 @@ def callback_message(callback):
         bot.register_next_step_handler(callback.message, process_fund_choice)
         bot.answer_callback_query(callback.id)
     
+    elif callback.data in ['sub_month', 'sub_year']:
+        sub_type = callback.data.replace('sub_', '')
+        user_id = callback.from_user.id
+        payment_link, inv_id = generate_payment_link(user_id, sub_type)
+        user_temp_data[f"order_{user_id}"] = {'inv_id': inv_id, 'sub_type': sub_type, 'user_id': user_id}
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton('💳 Перейти к оплате', url=payment_link))
+        markup.add(types.InlineKeyboardButton('🔙 Назад', callback_data='subscription'))
+        bot.edit_message_text(chat_id=callback.message.chat.id, message_id=callback.message.message_id, text=f"💎 *ОФОРМЛЕНИЕ ПОДПИСКИ*\n\n" f"Ты выбрал: *{sub_type}*\n" f"Сумма к оплате: *{SUBSCRIPTION_PRICES[sub_type]}₽*\n\n" f"После оплаты подписка активируется автоматически. Обычно это занимает 1–2 минуты.", parse_mode='Markdown', reply_markup=markup)
+        bot.answer_callback_query(callback.id)
+
     elif callback.data == 'calc_credit':
         msg = bot.send_message(callback.message.chat.id, "💰 *КРЕДИТНЫЙ КАЛЬКУЛЯТОР*\n\nВведи сумму кредита в рублях:")
         bot.register_next_step_handler(msg, process_credit_amount)
@@ -1465,7 +1512,21 @@ def callback_message(callback):
         show_balance_expenses(callback)
 
     elif callback.data == 'subscription':
-        bot.answer_callback_query(callback.id, "💎 Бесплатный тариф", show_alert=True)
+        markup = get_subscription_keyboard()
+        bot.send_message(
+            callback.message.chat.id,
+            "💎 *SANDER PREMIUM*\n\n"
+            "💰 Цены на подписку:\n"
+            "• 1 месяц — 149₽\n"
+            "• 1 год — 1699₽ (скидка 37%)\n\n"
+            "🎁 Преимущества Premium:\n"
+            "1 - Отдельный вип бот в котором заранее выходят обновления!😎"
+            "2 - Чат с админом для общения на прямую!😮‍💨"
+            "Выбери срок подписки:",
+            parse_mode='Markdown',
+            reply_markup=markup
+        )
+        bot.answer_callback_query(callback.id)
 
     elif callback.data == 'support':
         bot.answer_callback_query(callback.id, "📞 поддержка: @hXwlssS", show_alert=True)
@@ -1758,6 +1819,26 @@ def process_tax_income(message):
         bot.send_message(message.chat.id, "🧾 Выбери ставку налога:", reply_markup=markup)
     except ValueError:
         bot.send_message(message.chat.id, "❌ Введи число!")
+
+def activate_subscription(user_id, sub_type):
+    days = 30 if sub_type == 'month' else 365
+    expires_at = (datetime.now() + timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+    conn = sqlite3.connect('finance_bot.db')
+    cur = conn.cursor()
+    cur.execute('''INSERT OR REPLACE INTO subscriptions (user_id, expires_at, is_active)  VALUES (?, ?, 1) ''', (user_id, expires_at))
+    conn.commit()
+    cur.close()
+    conn.close()
+    bot.send_message(user_id, f"✅ *Подписка активирована!*\n\n" f"Действует до: {expires_at}\n" f"Спасибо за поддержку! 🎉", parse_mode='Markdown')
+    bot.send_message(ADMIN_ID, f"💰 *Новая подписка*\n\n" f"👤 Пользователь ID: `{user_id}`\n" f"📅 Тип: {sub_type}\n" f"✅ Активирована до: {expires_at}", parse_mode='Markdown')
+
+def generate_payment_link(user_id, subscription_type):
+    price = SUBSCRIPTION_PRICES[subscription_type]
+    inv_id = int(f"{user_id}{int(time.time())}")
+    descriptions = {'month': 'Подписка Sander Finance на 1 месяц', 'year': 'Подписка Sander Finance на 1 год'}
+    shp_params = {'Shp_user_id': user_id, 'Shp_sub_type': subscription_type}
+    payment_link = robokassa.get_payment_link(merchant_login=ROBOKASSA_LOGIN, password1=ROBOKASSA_PASSWORD1, inv_id=inv_id, inv_desc=descriptions[subscription_type], out_sum=price, is_test=ROBOKASSA_TEST_MODE, **shp_params)
+    return payment_link, inv_id
 
 if __name__ == '__main__':
     bot.polling(none_stop=True)
