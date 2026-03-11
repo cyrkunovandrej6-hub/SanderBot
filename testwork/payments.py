@@ -17,6 +17,14 @@ def get_md5_signature(params_string):
     """Вычисляет MD5-хеш строки параметров"""
     return hashlib.md5(params_string.encode('utf-8')).hexdigest()
 
+@app.route('/payment/fail', methods=['GET'])
+def payment_fail():
+    return "❌ Оплата не удалась. Попробуйте снова.", 200
+
+@app.route('/payment/success', methods=['GET'])
+def payment_success():
+    return "✅ Оплата прошла успешно! Можете вернуться в бота.", 200
+
 @app.route('/payment', methods=['POST'])
 def payment_result():
     """Обрабатывает уведомления от Robokassa об успешной оплате"""
@@ -89,4 +97,3 @@ if __name__ == '__main__':
     print("🚀 Веб-обработчик Robokassa запущен на порту 5000")
     print(f"📢 Result URL: http://212.109.229.67:5000/payment")
     app.run(host='0.0.0.0', port=80)
-
