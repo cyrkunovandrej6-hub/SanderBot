@@ -88,4 +88,5 @@ def payment_result():
 if __name__ == '__main__':
     print("🚀 Веб-обработчик Robokassa запущен на порту 5000")
     print(f"📢 Result URL: http://212.109.229.67:5000/payment")
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=80)
+
