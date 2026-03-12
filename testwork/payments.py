@@ -17,14 +17,6 @@ def get_md5_signature(params_string):
     """Вычисляет MD5-хеш строки параметров"""
     return hashlib.md5(params_string.encode('utf-8')).hexdigest()
 
-@app.route('/payment/fail', methods=['GET'])
-def payment_fail():
-    return "❌ Оплата не удалась. Попробуйте снова.", 200
-
-@app.route('/payment/success', methods=['GET'])
-def payment_success():
-    return "✅ Оплата прошла успешно! Можете вернуться в бота.", 200
-
 @app.route('/payment', methods=['POST'])
 def payment_result():
     """Обрабатывает уведомления от Robokassa об успешной оплате"""
@@ -93,7 +85,39 @@ def payment_result():
         print(f"❌ Ошибка в обработчике: {e}")
         return "ERROR", 500
 
+# ========== НОВЫЕ ОБРАБОТЧИКИ ДЛЯ ПОЛЬЗОВАТЕЛЯ ==========
+@app.route('/payment/success', methods=['GET'])
+def payment_success():
+    """Страница, которую видит пользователь после успешной оплаты"""
+    # Здесь можно сделать красивую HTML-страницу или просто отправить сообщение
+    return """
+    <html>
+        <head><title>Оплата прошла успешно</title></head>
+        <body style="text-align: center; font-family: Arial; padding: 50px;">
+            <h1>✅ Оплата прошла успешно!</h1>
+            <p>Спасибо за покупку. Вы можете вернуться в бота и продолжить пользоваться премиум-функциями.</p>
+            <p><a href="https://t.me/sanderfinancee_bot">Вернуться в бота</a></p>
+        </body>
+    </html>
+    """, 200
+
+@app.route('/payment/fail', methods=['GET'])
+def payment_fail():
+    """Страница, которую видит пользователь при ошибке оплаты"""
+    return """
+    <html>
+        <head><title>Ошибка оплаты</title></head>
+        <body style="text-align: center; font-family: Arial; padding: 50px;">
+            <h1>❌ Оплата не удалась</h1>
+            <p>Что-то пошло не так. Попробуйте ещё раз или обратитесь в поддержку.</p>
+            <p><a href="https://t.me/sanderfinancee_bot">Вернуться в бота</a></p>
+        </body>
+    </html>
+    """, 200
+
 if __name__ == '__main__':
-    print("🚀 Веб-обработчик Robokassa запущен на порту 5000")
-    print(f"📢 Result URL: http://212.109.229.67:5000/payment")
+    print("🚀 Веб-обработчик Robokassa запущен на порту 80")
+    print(f"📢 Result URL: http://212.109.223.67:80/payment")
+    print(f"📢 Success URL: http://212.109.223.67:80/payment/success")
+    print(f"📢 Fail URL: http://212.109.223.67:80/payment/fail")
     app.run(host='0.0.0.0', port=80)
