@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import time
 import hashlib
 import time
+import random
 
 bot = telebot.TeleBot('8526938179:AAHKiBZba2oy3cIcW8eigJL8WAfMypV75YI')
 user_temp_data = {}
@@ -1836,7 +1837,7 @@ def activate_subscription(user_id, sub_type):
 def generate_payment_link(user_id, subscription_type):
     """Генерирует ссылку на оплату через Robokassa (по официальной документации)"""
     price = SUBSCRIPTION_PRICES[subscription_type]
-    inv_id = int(f"{user_id}{int(time.time())}")
+    inv_id = int(f"{user_id % 10000}{int(time.time()) % 1000}")
     
     # Описание товара
     descriptions = {
@@ -1850,7 +1851,7 @@ def generate_payment_link(user_id, subscription_type):
     signature = hashlib.md5(signature_str.encode()).hexdigest()
     
     # Базовая ссылка (как в curl примере)
-    base_url = "https://auth.robokassa.ru/Merchant/Payment/Index"
+    base_url = "https://auth.robokassa.ru/Merchant/Index.aspx"
     
     # Дополнительные параметры
     shp_user_id = f"shp_user_id={user_id}"
