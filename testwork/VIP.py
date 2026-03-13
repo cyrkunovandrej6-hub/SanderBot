@@ -1117,8 +1117,8 @@ def format_main_menu(user_name, user_id):
     menu_text = f"""
 ☀️ {greeting}, {user_name}! 👋
 
-✨ ДОБРО ПОЖАЛОВАТЬ В SANDER FINANCE!
-Ваш персональный финансовый помощник с калькулятором 🏦
+✨ ДОБРО ПОЖАЛОВАТЬ В SANDER FINANCE VIP!
+Ваш персональный финансовый помощник НО с новинками заранее!!
 
 📊 ВАША ФИНАНСОВАЯ СВОДКА:
 
@@ -2122,3 +2122,6 @@ def generate_payment_link(user_id, subscription_type):
 
 if __name__ == '__main__':
     bot.polling(none_stop=True)
+
+
+
