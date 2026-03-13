@@ -15,8 +15,8 @@ ADMIN_ID = 5933197105
 
 # ========== ROBOKASSA ==========
 ROBOKASSA_LOGIN = 'sanderfinanceBOT'
-ROBOKASSA_PASSWORD1 = 'cyrkunovandrej6'
-ROBOKASSA_PASSWORD2 = 'cyrkunovandrej67'
+ROBOKASSA_PASSWORD1 = 'LZHn2Civ0n1Wyq5ra2pd'
+ROBOKASSA_PASSWORD2 = 'Ca4afd1BJQ5fyB2zQW6h'
 ROBOKASSA_TEST_MODE = False
 SUBSCRIPTION_PRICES = {'month': 149, 'year': 1699}
 
@@ -1885,3 +1885,4 @@ def generate_payment_link(user_id, subscription_type):
 
 if __name__ == '__main__':
     bot.polling(none_stop=True)
+    
