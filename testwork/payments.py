@@ -9,7 +9,7 @@ app = Flask(__name__)
 
 # ========== КОНФИГУРАЦИЯ ROBOKASSA ==========
 ROBOKASSA_LOGIN = 'sanderfinanceBOT'
-ROBOKASSA_PASSWORD2 = 'cyrkunovandrej67'  # Пароль №2 для проверки подписей
+ROBOKASSA_PASSWORD2 = 'Ca4afd1BJQ5fyB2zQW6h'  
 BOT_TOKEN = '8526938179:AAHKiBZba2oy3cIcW8eigJL8WAfMypV75YI'
 
 # ========== ФУНКЦИЯ ДЛЯ ВЫЧИСЛЕНИЯ ПОДПИСИ MD5 ==========
