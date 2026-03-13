@@ -1836,19 +1836,35 @@ def activate_subscription(user_id, sub_type):
 
 def generate_payment_link(user_id, subscription_type):
     price = SUBSCRIPTION_PRICES[subscription_type]
-    inv_id = int(f"{user_id % 100000}{int(time.time()) % 10000}")
+    inv_id = int(time.time()) % 100000
     
+    # Описание без спецсимволов (как в документации)
     descriptions = {
-        'month': 'month_subscription',
-        'year': 'year_subscription'
+        'month': 'Подписка на месяц',
+        'year': 'Подписка на год'
     }
-    shp1 = f"Shp_sub_type={subscription_type}"
-    shp2 = f"Shp_user_id={user_id}"
-    shp_list = [shp1, shp2]
-    signature_str = f"{ROBOKASSA_LOGIN}:{price}:{inv_id}:{ROBOKASSA_PASSWORD1}:{shp1}:{shp2}"
-    signature = hashlib.md5(signature_str.encode('utf-8')).hexdigest()
-    base_url = "https://auth.robokassa.ru/Merchant/Index.aspx"
     
+    # Shp-параметры в алфавитном порядке
+    shp_params = {
+        'Shp_sub_type': subscription_type,
+        'Shp_user_id': user_id
+    }
+    
+    # Сортировка ключей по алфавиту
+    sorted_keys = sorted(shp_params.keys())
+    
+    # Формируем строку подписи по схеме из документации
+    # MerchantLogin:OutSum:InvId:Пароль#1:Shp_ключ=значение:Shp_ключ=значение
+    signature_base = f"{ROBOKASSA_LOGIN}:{price}:{inv_id}:{ROBOKASSA_PASSWORD1}"
+    for key in sorted_keys:
+        signature_base += f":{key}={shp_params[key]}"
+    
+    signature = hashlib.md5(signature_base.encode('utf-8')).hexdigest()
+    
+    # URL из документации
+    url = "https://auth.robokassa.ru/Merchant/Index.aspx"
+    
+    # Параметры для ссылки
     params = {
         'MerchantLogin': ROBOKASSA_LOGIN,
         'OutSum': str(price),
@@ -1860,9 +1876,10 @@ def generate_payment_link(user_id, subscription_type):
     }
     
     query = '&'.join([f"{k}={v}" for k, v in params.items()])
-    link = f"{base_url}?{query}"
+    link = f"{url}?{query}"
+    
     print(f"Подпись: {signature}")
-    print(f"Строка подписи: {signature_str}")
+    print(f"Строка подписи: {signature_base}")
     
     return link, inv_id
 
