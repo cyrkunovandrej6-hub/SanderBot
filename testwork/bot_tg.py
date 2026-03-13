@@ -1841,7 +1841,14 @@ def generate_payment_link(user_id, subscription_type):
         'month': 'Подписка Sander Finance на 1 месяц',
         'year': 'Подписка Sander Finance на 1 год'
     }
+    shp_params = [
+        f"Shp_sub_type={subscription_type}",
+        f"Shp_user_id={user_id}"
+    ]
+    shp_params.sort()
     signature_str = f"{ROBOKASSA_LOGIN}:{price}:{inv_id}:{ROBOKASSA_PASSWORD1}"
+    for shp in shp_params:
+        signature_str += f":{shp}"
     signature = hashlib.md5(signature_str.encode('utf-8')).hexdigest()
     base_url = "https://auth.robokassa.ru/Merchant/Index.aspx"
     params = {
@@ -1850,13 +1857,14 @@ def generate_payment_link(user_id, subscription_type):
         'InvId': str(inv_id),
         'Description': descriptions[subscription_type],
         'SignatureValue': signature,
-        'shp_user_id': str(user_id),
-        'shp_sub_type': subscription_type
+        'IsTest': '0',
+        'Shp_user_id': str(user_id),
+        'Shp_sub_type': subscription_type
     }
     query_string = '&'.join([f"{k}={v}" for k, v in params.items()])
     payment_link = f"{base_url}?{query_string}"
-    print(f"DEBUG: Подпись для Robokassa: {signature}")
-    print(f"DEBUG: Строка подписи: {signature_str}")
+    print(f"DEBUG Строка подписи: {signature_str}")
+    print(f"DEBUG Подпись: {signature}")
     
     return payment_link, inv_id
 
