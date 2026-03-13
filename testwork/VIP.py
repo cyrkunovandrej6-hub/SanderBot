@@ -12,12 +12,6 @@ bot.timeout = 90
 
 ADMIN_ID = 5933197105
 
-# ========== ROBOKASSA ==========
-ROBOKASSA_LOGIN = 'sanderfinanceBOT'
-ROBOKASSA_PASSWORD1 = 'LZHn2Civ0n1Wyq5ra2pd'
-ROBOKASSA_PASSWORD2 = 'Ca4afd1BJQ5fyB2zQW6h'
-ROBOKASSA_TEST_MODE = False
-SUBSCRIPTION_PRICES = {'month': 149, 'year': 1699}
 
 ABOUT_TEXT = """
 📌 *SANDER FINANCE — ПОЛНАЯ ИНФОРМАЦИЯ*
@@ -2040,85 +2034,6 @@ def process_tax_income(message):
         bot.send_message(message.chat.id, "🧾 Выбери ставку налога:", reply_markup=markup)
     except ValueError:
         bot.send_message(message.chat.id, "❌ Введи число!")
-
-def activate_subscription(user_id, sub_type):
-    days = 30 if sub_type == 'month' else 365
-    expires_at = (datetime.now() + timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
-    
-    conn = sqlite3.connect('finance_bot.db')
-    cur = conn.cursor()
-    cur.execute('''INSERT OR REPLACE INTO subscriptions (user_id, expires_at, is_active) VALUES (?, ?, 1)''', (user_id, expires_at))
-    conn.commit()
-    cur.close()
-    conn.close()
-    vip_bot = "@sandervip_bot"
-    vip_chat = "https://t.me/+3ZD7JG_KRDNhNDA6"
-    vip_message = (
-        f"✅ *Подписка активирована!*\n\n"
-        f"📅 Действует до: {expires_at}\n\n"
-        f"🎁 *VIP-ДОСТУП:*\n"
-        f"🤖 VIP-бот: {vip_bot}\n"
-        f"💬 VIP-чат: {vip_chat}\n\n"
-        f"Спасибо за поддержку! 🎉"
-    )
-    bot.send_message(user_id, vip_message, parse_mode='Markdown')
-    bot.send_message(
-        ADMIN_ID,
-        f"💰 *Новая подписка*\n\n"
-        f"👤 Пользователь ID: `{user_id}`\n"
-        f"📅 Тип: {sub_type}\n"
-        f"✅ Активирована до: {expires_at}",
-        parse_mode='Markdown'
-    )
-
-def generate_payment_link(user_id, subscription_type):
-    price = SUBSCRIPTION_PRICES[subscription_type]
-    inv_id = int(time.time()) % 100000
-    
-    # Описание без спецсимволов (как в документации)
-    descriptions = {
-        'month': 'Подписка на месяц',
-        'year': 'Подписка на год'
-    }
-    
-    # Shp-параметры в алфавитном порядке
-    shp_params = {
-        'Shp_sub_type': subscription_type,
-        'Shp_user_id': user_id
-    }
-    
-    # Сортировка ключей по алфавиту
-    sorted_keys = sorted(shp_params.keys())
-    
-    # Формируем строку подписи по схеме из документации
-    # MerchantLogin:OutSum:InvId:Пароль#1:Shp_ключ=значение:Shp_ключ=значение
-    signature_base = f"{ROBOKASSA_LOGIN}:{price}:{inv_id}:{ROBOKASSA_PASSWORD1}"
-    for key in sorted_keys:
-        signature_base += f":{key}={shp_params[key]}"
-    
-    signature = hashlib.md5(signature_base.encode('utf-8')).hexdigest()
-    
-    # URL из документации
-    url = "https://auth.robokassa.ru/Merchant/Index.aspx"
-    
-    # Параметры для ссылки
-    params = {
-        'MerchantLogin': ROBOKASSA_LOGIN,
-        'OutSum': str(price),
-        'InvId': str(inv_id),
-        'Description': descriptions[subscription_type],
-        'SignatureValue': signature,
-        'Shp_user_id': str(user_id),
-        'Shp_sub_type': subscription_type
-    }
-    
-    query = '&'.join([f"{k}={v}" for k, v in params.items()])
-    link = f"{url}?{query}"
-    
-    print(f"Подпись: {signature}")
-    print(f"Строка подписи: {signature_base}")
-    
-    return link, inv_id
 
 if __name__ == '__main__':
     bot.polling(none_stop=True)
