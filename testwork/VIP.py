@@ -6,7 +6,7 @@ import time
 import hashlib
 import random
 
-bot = telebot.TeleBot('8526938179:AAHKiBZba2oy3cIcW8eigJL8WAfMypV75YI')
+bot = telebot.TeleBot('8757564745:AAH8Ah9ULTxgqzXH_NpQXQGc5MEQ0TGporY')
 user_temp_data = {}
 bot.timeout = 90
 
