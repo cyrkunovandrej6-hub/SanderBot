@@ -1835,40 +1835,28 @@ def activate_subscription(user_id, sub_type):
     bot.send_message(ADMIN_ID, f"💰 *Новая подписка*\n\n" f"👤 Пользователь ID: `{user_id}`\n" f"📅 Тип: {sub_type}\n" f"✅ Активирована до: {expires_at}", parse_mode='Markdown')
 
 def generate_payment_link(user_id, subscription_type):
-    """Генерирует ссылку на оплату через Robokassa (по официальной документации)"""
     price = SUBSCRIPTION_PRICES[subscription_type]
     inv_id = int(f"{user_id % 10000}{int(time.time()) % 1000}")
-    
-    # Описание товара
     descriptions = {
         'month': 'Подписка Sander Finance на 1 месяц',
         'year': 'Подписка Sander Finance на 1 год'
     }
-    
-    # Формируем подпись (SignatureValue)
-    # Формат: MerchantLogin:OutSum:InvId:Password1
     signature_str = f"{ROBOKASSA_LOGIN}:{price}:{inv_id}:{ROBOKASSA_PASSWORD1}"
-    signature = hashlib.md5(signature_str.encode()).hexdigest()
-    
-    # Базовая ссылка (как в curl примере)
+    signature = hashlib.md5(signature_str.encode('utf-8')).hexdigest()
     base_url = "https://auth.robokassa.ru/Merchant/Index.aspx"
-    
-    # Дополнительные параметры
-    shp_user_id = f"shp_user_id={user_id}"
-    shp_sub_type = f"shp_sub_type={subscription_type}"
-    
-    # Собираем полный URL
-    payment_link = (
-        f"{base_url}?"
-        f"MerchantLogin={ROBOKASSA_LOGIN}"
-        f"&OutSum={price}"
-        f"&InvId={inv_id}"
-        f"&Description={descriptions[subscription_type]}"
-        f"&SignatureValue={signature}"
-        f"&IsTest={'1' if ROBOKASSA_TEST_MODE else '0'}"
-        f"&{shp_user_id}"
-        f"&{shp_sub_type}"
-    )
+    params = {
+        'MerchantLogin': ROBOKASSA_LOGIN,
+        'OutSum': str(price),
+        'InvId': str(inv_id),
+        'Description': descriptions[subscription_type],
+        'SignatureValue': signature,
+        'shp_user_id': str(user_id),
+        'shp_sub_type': subscription_type
+    }
+    query_string = '&'.join([f"{k}={v}" for k, v in params.items()])
+    payment_link = f"{base_url}?{query_string}"
+    print(f"DEBUG: Подпись для Robokassa: {signature}")
+    print(f"DEBUG: Строка подписи: {signature_str}")
     
     return payment_link, inv_id
 
