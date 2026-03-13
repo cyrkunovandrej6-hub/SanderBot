@@ -1836,37 +1836,35 @@ def activate_subscription(user_id, sub_type):
 
 def generate_payment_link(user_id, subscription_type):
     price = SUBSCRIPTION_PRICES[subscription_type]
-    inv_id = int(f"{user_id % 10000}{int(time.time()) % 1000}")
+    inv_id = int(f"{user_id % 100000}{int(time.time()) % 10000}")
+    
     descriptions = {
-        'month': 'Подписка Sander Finance на 1 месяц',
-        'year': 'Подписка Sander Finance на 1 год'
+        'month': 'month_subscription',
+        'year': 'year_subscription'
     }
-    shp_params = [
-        f"Shp_sub_type={subscription_type}",
-        f"Shp_user_id={user_id}"
-    ]
-    shp_params.sort()
-    signature_str = f"{ROBOKASSA_LOGIN}:{price}:{inv_id}:{ROBOKASSA_PASSWORD1}"
-    for shp in shp_params:
-        signature_str += f":{shp}"
+    shp1 = f"Shp_sub_type={subscription_type}"
+    shp2 = f"Shp_user_id={user_id}"
+    shp_list = [shp1, shp2]
+    signature_str = f"{ROBOKASSA_LOGIN}:{price}:{inv_id}:{ROBOKASSA_PASSWORD1}:{shp1}:{shp2}"
     signature = hashlib.md5(signature_str.encode('utf-8')).hexdigest()
     base_url = "https://auth.robokassa.ru/Merchant/Index.aspx"
+    
     params = {
         'MerchantLogin': ROBOKASSA_LOGIN,
         'OutSum': str(price),
         'InvId': str(inv_id),
         'Description': descriptions[subscription_type],
         'SignatureValue': signature,
-        'IsTest': '0',
         'Shp_user_id': str(user_id),
         'Shp_sub_type': subscription_type
     }
-    query_string = '&'.join([f"{k}={v}" for k, v in params.items()])
-    payment_link = f"{base_url}?{query_string}"
-    print(f"DEBUG Строка подписи: {signature_str}")
-    print(f"DEBUG Подпись: {signature}")
     
-    return payment_link, inv_id
+    query = '&'.join([f"{k}={v}" for k, v in params.items()])
+    link = f"{base_url}?{query}"
+    print(f"Подпись: {signature}")
+    print(f"Строка подписи: {signature_str}")
+    
+    return link, inv_id
 
 if __name__ == '__main__':
     bot.polling(none_stop=True)
