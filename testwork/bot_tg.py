@@ -1633,28 +1633,32 @@ def callback_message(callback):
         bot.answer_callback_query(callback.id)
 
     elif callback.data == 'expenses_week':
-        user_id = callback.from_user.id
-        current, previous = Expense.get_week_comparison(user_id)
-        if previous > 0:
-            change = ((current - previous) / previous) * 100
-            arrow = "📈" if change > 0 else "📉" if change < 0 else "➡️"
-            change_text = f"{arrow} {change:+.1f}%"
-        else:
-            change_text = "📊 нет данных за прошлый период"
-        msg = f"📊 *АНАЛИЗ ТРАТ ЗА 7 ДНЕЙ*\n\n"
-        msg += f"📆 Последние 7 дней: *{current:,.0f}₽*\n" 
-        msg += f"📅 Предыдущие 7 дней: {previous:,.0f}₽\n"
-        msg += f"📈 Динамика: {change_text}\n"
-        if current > previous:
-            msg += f"\n⚠️ Траты выросли на {abs(change):.1f}% по сравнению с прошлой неделей."
-        elif current < previous:
-            msg += f"\n✅ Молодец! Траты снизились на {abs(change):.1f}%."
-        else:
-            msg += f"\n➡️ Траты остались на том же уровне."
-        markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton('🔙 Назад к тратам', callback_data='balance'))
-        bot.send_message(callback.message.chat.id, msg, parse_mode='Markdown', reply_markup=markup)
-        bot.answer_callback_query(callback.id)
+        try:
+            user_id = callback.from_user.id
+            current, previous = Expense.get_week_comparison(user_id)
+            if previous > 0:
+                change = ((current - previous) / previous) * 100
+                arrow = "📈" if change > 0 else "📉" if change < 0 else "➡️"
+                change_text = f"{arrow} {change:+.1f}%"
+            else:
+                change_text = "📊 нет данных за прошлый период"
+            msg = f"📊 *АНАЛИЗ ТРАТ ЗА 7 ДНЕЙ*\n\n"
+            msg += f"📆 Последние 7 дней: *{current:,.0f}₽*\n"
+            msg += f"📅 Предыдущие 7 дней: {previous:,.0f}₽\n"
+            msg += f"📈 Динамика: {change_text}\n"
+            if current > previous:
+                msg += f"\n⚠️ Траты выросли на {abs(change):.1f}% по сравнению с прошлой неделей."
+            elif current < previous:
+                msg += f"\n✅ Молодец! Траты снизились на {abs(change):.1f}%."
+            else:
+                msg += f"\n➡️ Траты остались на том же уровне."
+            markup = types.InlineKeyboardMarkup()
+            markup.add(types.InlineKeyboardButton('🔙 Назад к тратам', callback_data='balance'))
+            bot.send_message(callback.message.chat.id, msg, parse_mode='Markdown', reply_markup=markup)
+            bot.answer_callback_query(callback.id)
+        except Exception as e:
+            bot.send_message(callback.message.chat.id, f"❌ Ошибка: {e}")
+            bot.answer_callback_query(callback.id)
 
     elif callback.data == 'menu':
         user_name = get_last_user_name()
