@@ -1636,26 +1636,42 @@ def callback_message(callback):
         try:
             user_id = callback.from_user.id
             current, previous = Expense.get_week_comparison(user_id)
+            change = 0
             if previous > 0:
                 change = ((current - previous) / previous) * 100
-                arrow = "📈" if change > 0 else "📉" if change < 0 else "➡️"
-                change_text = f"{arrow} {change:+.1f}%"
+            if previous > 0:
+                if change > 0:
+                    arrow = "📈"
+                    change_text = f"{arrow} {change:+.1f}%"
+                elif change < 0:
+                    arrow = "📉"
+                    change_text = f"{arrow} {change:+.1f}%"
+                else:
+                    arrow = "➡️"
+                    change_text = f"{arrow} 0.0%"
             else:
                 change_text = "📊 нет данных за прошлый период"
+
             msg = f"📊 *АНАЛИЗ ТРАТ ЗА 7 ДНЕЙ*\n\n"
             msg += f"📆 Последние 7 дней: *{current:,.0f}₽*\n"
             msg += f"📅 Предыдущие 7 дней: {previous:,.0f}₽\n"
             msg += f"📈 Динамика: {change_text}\n"
-            if current > previous:
-                msg += f"\n⚠️ Траты выросли на {abs(change):.1f}% по сравнению с прошлой неделей."
-            elif current < previous:
-                msg += f"\n✅ Молодец! Траты снизились на {abs(change):.1f}%."
+
+            if previous > 0:
+                if current > previous:
+                    msg += f"\n⚠️ Траты выросли на {abs(change):.1f}% по сравнению с прошлой неделей."
+                elif current < previous:
+                    msg += f"\n✅ Молодец! Траты снизились на {abs(change):.1f}%."
+                else:
+                    msg += f"\n➡️ Траты остались на том же уровне."
             else:
-                msg += f"\n➡️ Траты остались на том же уровне."
+                msg += f"\n📭 Недостаточно данных для сравнения с прошлым периодом."
+
             markup = types.InlineKeyboardMarkup()
             markup.add(types.InlineKeyboardButton('🔙 Назад к тратам', callback_data='balance'))
             bot.send_message(callback.message.chat.id, msg, parse_mode='Markdown', reply_markup=markup)
             bot.answer_callback_query(callback.id)
+
         except Exception as e:
             bot.send_message(callback.message.chat.id, f"❌ Ошибка: {e}")
             bot.answer_callback_query(callback.id)
