@@ -491,8 +491,8 @@ def handle_custom_category(call):
 def admin_callback(call):
     if call.from_user.id != ADMIN_ID:
         return
-    
-    elif call.data == 'admin_users_total':
+
+    if call.data == 'admin_users_total':
         conn = sqlite3.connect('finance_bot.db')
         cur = conn.cursor()
         cur.execute("SELECT COUNT(DISTINCT user_id) FROM users")
@@ -503,7 +503,48 @@ def admin_callback(call):
         total_rows = cur.fetchone()[0]
         cur.close()
         conn.close()
-        bot.send_message(call.message.chat.id, f"📊 *СТАТИСТИКА ПОЛЬЗОВАТЕЛЕЙ*\n\n" f"👤 *Уникальных:* {unique_users}\n" f"📝 *Уникальных регистраций:* {unique_reg}\n" f"📦 *Всего записей (с дублями):* {total_rows}", parse_mode='Markdown')
+        bot.send_message(
+            call.message.chat.id,
+            f"📊 *СТАТИСТИКА ПОЛЬЗОВАТЕЛЕЙ*\n\n"
+            f"👤 *Уникальных:* {unique_users}\n"
+            f"📝 *Уникальных регистраций:* {unique_reg}\n"
+            f"📦 *Всего записей (с дублями):* {total_rows}",
+            parse_mode='Markdown'
+        )
+        bot.answer_callback_query(call.id)
+
+    elif call.data == 'admin_users_now':
+        bot.send_message(
+            call.message.chat.id,
+            "🟢 *Активных прямо сейчас:* ~0\n"
+            "(Функция в разработке)",
+            parse_mode='Markdown'
+        )
+        bot.answer_callback_query(call.id)
+
+    elif call.data == 'admin_stats':
+        conn = sqlite3.connect('finance_bot.db')
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM subscriptions WHERE is_active = 1")
+        active_subs = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM expenses")
+        total_expenses = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(DISTINCT user_id) FROM expenses")
+        users_with_expenses = cur.fetchone()[0]
+        cur.close()
+        conn.close()
+        bot.send_message(
+            call.message.chat.id,
+            f"📊 *ОБЩАЯ СТАТИСТИКА*\n\n"
+            f"💎 Активных подписок: {active_subs}\n"
+            f"💰 Всего трат: {total_expenses}\n"
+            f"👥 Пользователей с тратами: {users_with_expenses}",
+            parse_mode='Markdown'
+        )
+        bot.answer_callback_query(call.id)
+
+    else:
+        bot.answer_callback_query(call.id, "❌ Неизвестная команда")
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('deposit_cap_'))
 def process_deposit_cap(call):
