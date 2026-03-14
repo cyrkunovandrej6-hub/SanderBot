@@ -492,23 +492,18 @@ def admin_callback(call):
     if call.from_user.id != ADMIN_ID:
         return
     
-    if call.data == 'admin_users_total':
+    elif call.data == 'admin_users_total':
         conn = sqlite3.connect('finance_bot.db')
         cur = conn.cursor()
+        cur.execute("SELECT COUNT(DISTINCT user_id) FROM users")
+        unique_users = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(DISTINCT user_id) FROM registrations")
+        unique_reg = cur.fetchone()[0]
         cur.execute("SELECT COUNT(*) FROM users")
-        total_users = cur.fetchone()[0]
-        cur.execute("SELECT COUNT(*) FROM registrations")
-        total_reg = cur.fetchone()[0]
+        total_rows = cur.fetchone()[0]
         cur.close()
         conn.close()
-        
-        bot.send_message(
-            call.message.chat.id,
-            f"📊 *СТАТИСТИКА ПОЛЬЗОВАТЕЛЕЙ*\n\n"
-            f"👤 Всего в users: {total_users}\n"
-            f"📝 Всего регистраций: {total_reg}",
-            parse_mode='Markdown'
-        )
+        bot.send_message(call.message.chat.id, f"📊 *СТАТИСТИКА ПОЛЬЗОВАТЕЛЕЙ*\n\n" f"👤 *Уникальных:* {unique_users}\n" f"📝 *Уникальных регистраций:* {unique_reg}\n" f"📦 *Всего записей (с дублями):* {total_rows}", parse_mode='Markdown')
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('deposit_cap_'))
 def process_deposit_cap(call):
@@ -1415,13 +1410,16 @@ def callback_message(callback):
         active_subs = cur.fetchone()[0]
         cur.execute("SELECT COUNT(*) FROM expenses")
         total_expenses = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(DISTINCT user_id) FROM expenses")
+        users_with_expenses = cur.fetchone()[0]
         cur.close()
         conn.close()
         bot.send_message(
             callback.message.chat.id,
             f"📊 *ОБЩАЯ СТАТИСТИКА*\n\n"
             f"💎 Активных подписок: {active_subs}\n"
-            f"💰 Всего трат: {total_expenses}",
+            f"💰 Всего трат: {total_expenses}\n"
+            f"👥 Пользователей с тратами: {users_with_expenses}",
             parse_mode='Markdown'
         )
 
@@ -1700,26 +1698,29 @@ def callback_message(callback):
         user_name = get_last_user_name() or "Пользователь"
         conn = sqlite3.connect('finance_bot.db')
         cur = conn.cursor()
-        cur.execute("SELECT registered_at FROM registrations WHERE user_id = ?", (user_id,))
+        cur.execute("SELECT registered_at FROM registrations WHERE user_id = ? ORDER BY registered_at DESC LIMIT 1", (user_id,))
         reg_data = cur.fetchone()
+        cur.execute("SELECT COUNT(*) FROM registrations WHERE user_id = ?", (user_id,))
+        reg_count = cur.fetchone()[0]
         cur.close()
         conn.close()
         reg_date = reg_data[0] if reg_data else "неизвестно"
+        reg_date_obj = datetime.strptime(reg_date, "%Y-%m-%d %H:%M:%S")
+        days_in_bot = (datetime.now() - reg_date_obj).days
         total_income = Expense.get_total_income(user_id)
         total_expenses = Expense.get_total_expenses(user_id)
-        balance = total_income - total_expenses
-    
+        balance = total_income - total_expenses  
         message = f"📊 *СТАТИСТИКА ПОЛЬЗОВАТЕЛЯ*\n\n"
         message += f"🆔 *ID:* `{user_id}`\n"
-        message += f"📅 *Регистрация:* {reg_date}\n\n"
+        message += f"📅 *В боте с:* {reg_date_obj.strftime('%d.%m.%Y')}\n"
+        message += f"⏳ *Дней в боте:* {days_in_bot}\n"
+        message += f"🔄 *Перерегистраций:* {reg_count - 1}\n\n"
         message += f"💰 *ОБЩИЕ ПОКАЗАТЕЛИ:*\n"
         message += f"• Всего доходов: {total_income}₽\n"
         message += f"• Всего расходов: {total_expenses}₽\n"
         message += f"• Денежный поток: {balance}₽\n"
-    
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton('🔙 Назад в меню', callback_data='menu'))
-    
         bot.send_message(callback.message.chat.id, message, parse_mode='Markdown', reply_markup=markup)
 
     elif callback.data == 'balance':
