@@ -492,69 +492,34 @@ def admin_callback(call):
     if call.from_user.id != ADMIN_ID:
         bot.answer_callback_query(call.id, "❌ Нет доступа")
         return
-
     if call.data == 'admin_users_total':
         try:
             conn = sqlite3.connect('finance_bot.db')
             cur = conn.cursor()
-            cur.execute("SELECT COUNT(DISTINCT user_id) FROM users")
-            unique_users = cur.fetchone()[0]
+
+            # Сколько уникальных Telegram ID в registrations (реальные пользователи)
             cur.execute("SELECT COUNT(DISTINCT user_id) FROM registrations")
-            unique_reg = cur.fetchone()[0]
-            cur.execute("SELECT COUNT(*) FROM users")
+            unique_users = cur.fetchone()[0]
+
+            # Сколько уникальных записей в users (старая таблица, для совместимости)
+            cur.execute("SELECT COUNT(DISTINCT id) FROM users")
             total_rows = cur.fetchone()[0]
+
             cur.close()
             conn.close()
 
             bot.send_message(
                 call.message.chat.id,
                 f"📊 *СТАТИСТИКА ПОЛЬЗОВАТЕЛЕЙ*\n\n"
-                f"👤 *Реальных пользователей (нажали старт):* {unique_users}\n"
-                f"📝 *Зарегистрировались:* {unique_reg}\n"
-                f"📦 *Всего запусков:* {total_rows}",
-                parse_mode='Markdown'
-            )
-            bot.answer_callback_query(call.id)  # ✅ обязательно!
-        except Exception as e:
-            bot.send_message(call.message.chat.id, f"❌ Ошибка БД: {e}")
-            bot.answer_callback_query(call.id)
-
-    elif call.data == 'admin_users_now':
-        bot.send_message(
-            call.message.chat.id,
-            "🟢 *Активных прямо сейчас:* ~0\n(Функция в разработке)",
-            parse_mode='Markdown'
-        )
-        bot.answer_callback_query(call.id)
-
-    elif call.data == 'admin_stats':
-        try:
-            conn = sqlite3.connect('finance_bot.db')
-            cur = conn.cursor()
-            cur.execute("SELECT COUNT(*) FROM subscriptions WHERE is_active = 1")
-            active_subs = cur.fetchone()[0]
-            cur.execute("SELECT COUNT(*) FROM expenses")
-            total_expenses = cur.fetchone()[0]
-            cur.execute("SELECT COUNT(DISTINCT user_id) FROM expenses")
-            users_with_expenses = cur.fetchone()[0]
-            cur.close()
-            conn.close()
-
-            bot.send_message(
-                call.message.chat.id,
-                f"📊 *ОБЩАЯ СТАТИСТИКА*\n\n"
-                f"💎 Активных подписок: {active_subs}\n"
-                f"💰 Всего трат: {total_expenses}\n"
-                f"👥 Пользователей с тратами: {users_with_expenses}",
+                f"👤 *Реальных пользователей:* {unique_users}\n"
+                f"📦 *Всего записей в users:* {total_rows}",
                 parse_mode='Markdown'
             )
             bot.answer_callback_query(call.id)
         except Exception as e:
             bot.send_message(call.message.chat.id, f"❌ Ошибка БД: {e}")
             bot.answer_callback_query(call.id)
-
-    else:
-        bot.answer_callback_query(call.id, "❌ Неизвестная команда")
+    
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('deposit_cap_'))
 def process_deposit_cap(call):
